@@ -1,0 +1,42 @@
+# Entorno virtual
+venv/
+.env/
+.env
+
+# Cache de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Archivos de logs
+*.log
+
+# Archivos de base de datos
+*.sqlite3
+
+# Configuración de VS Code
+.vscode/
+
+# MacOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# Archivos de pruebas
+coverage/
+htmlcov/
+.tox/
+.nox/
+.pytest_cache/
+
+# Archivos de compilación
+build/
+dist/
+*.egg-info/
+
+# Railway
+railway.json
+
+# Archivos de sistema
+.idea/
