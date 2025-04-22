@@ -2,7 +2,7 @@
 venv/
 .env/
 .env
-.env.production
+.env.*
 
 # Cache de Python
 __pycache__/

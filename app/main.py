@@ -12,9 +12,11 @@ def root():
 
 @app.get("/webhook")
 def verify_webhook(mode: str, challenge: str, verify_token: str):
+    print("Meta intentó verificar:", mode, challenge, verify_token)
+    print("Token esperado:", settings.VERIFY_TOKEN)
     if mode == "subscribe" and verify_token == settings.VERIFY_TOKEN:
-        return PlainTextResponse(challenge)
-    return PlainTextResponse("Unauthorized", status_code=403)
+        return PlainTextResponse(content=challenge, status_code=200)
+    return PlainTextResponse(content="Unauthorized", status_code=403)
 
 @app.post("/webhook")
 async def receive_webhook(request: Request):

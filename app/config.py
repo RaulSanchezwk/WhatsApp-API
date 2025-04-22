@@ -1,17 +1,19 @@
-import os
+from pydantic import BaseSettings
 from dotenv import load_dotenv
+import os
 
+# Carga dinámica del entorno
 env = os.getenv("ENV", "development")
+load_dotenv(f".env.{env}")
 
-if env == "production":
-    load_dotenv(".env.production")
-else:
-    load_dotenv(".env")
-
-class Settings:
-    VERIFY_TOKEN: str = os.getenv("VERIFY_TOKEN")
-    ACCESS_TOKEN: str = os.getenv("WHATSAPP_ACCESS_TOKEN")
-    PHONE_NUMBER_ID: str = os.getenv("WHATSAPP_PHONE_NUMBER_ID")
+class Settings(BaseSettings):
+    VERIFY_TOKEN: str
+    ACCESS_TOKEN: str
+    PHONE_NUMBER_ID: str
     DEBUG: bool = env == "development"
+
+    class Config:
+        env_file = f".env.{env}"
+        case_sensitive = True
 
 settings = Settings()
