@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN: str
     PHONE_NUMBER_ID: str
     DEBUG: bool = env == "development"
+    ENV: str
 
     class Config:
         env_file = f".env.{env}"

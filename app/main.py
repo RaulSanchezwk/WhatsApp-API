@@ -1,5 +1,5 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi import FastAPI, Request, Query
+from fastapi.responses import JSONResponse
 import httpx
 
 from app.config import settings
@@ -11,12 +11,14 @@ def root():
     return {"message": "Bot activo", "debug": settings.DEBUG}
 
 @app.get("/webhook")
-def verify_webhook(mode: str, challenge: str, verify_token: str):
-    print("Meta intentó verificar:", mode, challenge, verify_token)
-    print("Token esperado:", settings.VERIFY_TOKEN)
-    if mode == "subscribe" and verify_token == settings.VERIFY_TOKEN:
-        return PlainTextResponse(content=challenge, status_code=200)
-    return PlainTextResponse(content="Unauthorized", status_code=403)
+def verify_webhook(
+    hub_mode: str = Query(..., alias="hub.mode"),
+    hub_token: str = Query(..., alias="hub.verify_token"),
+    hub_challenge: str = Query(..., alias="hub.challenge")
+    ):
+    if hub_mode == "subscribe" and hub_token == settings.VERIFY_TOKEN:
+        return int(hub_challenge)
+    return {"error": "Invalid verification token"}, 403
 
 @app.post("/webhook")
 async def receive_webhook(request: Request):
