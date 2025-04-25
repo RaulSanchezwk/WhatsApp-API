@@ -46,7 +46,7 @@ async def send_whatsapp_message(recipient_id: str, message: str):
         return response.json()
 
 
-@app.post("/enviar_mensaje")
+@app.api_route("/enviar_mensaje", methods=["GET", "POST"])
 async def enviar_mensaje_endpoint(request: Request):
     recipient = "528135745910"
     message = "Hola, estoy probando el endpoint de FastAPI"
