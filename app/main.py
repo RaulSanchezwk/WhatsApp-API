@@ -44,3 +44,11 @@ async def send_whatsapp_message(recipient_id: str, message: str):
         response = await client.post(url, headers=headers, json=payload)
         print("Respuesta de WhatsApp:", response.status_code, response.json())
         return response.json()
+
+
+@app.post("/enviar_mensaje")
+async def enviar_mensaje_endpoint(request: Request):
+    recipient = "528135745910"
+    message = "Hola, estoy probando el endpoint de FastAPI"
+    await send_whatsapp_message(recipient, message)
+    return {"status": "mensaje enviado desde FastAPI"}
