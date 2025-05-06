@@ -7,6 +7,7 @@ from app.schemas import WebhookPayload
 from app.domain.entities import Cliente
 from app.usecases.message_flow import manejar_mensaje
 from app.infrastructure.database import get_db_connection
+import json
 
 
 @asynccontextmanager
@@ -32,8 +33,17 @@ def verify_webhook(
     return {"error": "Invalid verification token"}, 403
 
 @app.post("/webhook")
-async def receive_webhook(payload: WebhookPayload):
-    print(f"Webhook recibido: {payload}")
+async def receive_webhook(request: Request):
+    data = await request.json()
+
+    print("Webhook recibido:\n", json.dumps(data, indent=2))
+
+    try:
+        payload = WebhookPayload(**data)
+    except Exception as e:
+        print("❌ Error al parsear a WebhookPayload:", str(e))
+        return JSONResponse(status_code=400, content={"error": "Formato inválido", "detalle": str(e)})
+
     value = payload.entry[0].changes[0].value
 
     if not value.messages or not value.contacts:
