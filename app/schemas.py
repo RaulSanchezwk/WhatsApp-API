@@ -51,9 +51,9 @@ class Metadata(BaseModel):
 class ChangeValue(BaseModel):
     messaging_product: str
     metadata: Metadata
-    contacts: Optional[List[Contact]]
-    messages: Optional[List[WhatsAppMessage]]
-    statuses: Optional[List[MessageStatus]]
+    contacts: Optional[List[Contact]] = None
+    messages: Optional[List[WhatsAppMessage]] = None
+    statuses: Optional[List[MessageStatus]] = None
 
 class Change(BaseModel):
     value: ChangeValue
