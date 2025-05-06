@@ -11,7 +11,7 @@ class WhatsAppMessage(BaseModel):
     id: str
     timestamp: str
     type: str
-    text: Optional[TextMessage]
+    text: Optional[TextMessage] = None
 
 class ContactProfile(BaseModel):
     name: str
@@ -27,20 +27,20 @@ class MessageOrigin(BaseModel):
 
 class MessageConversation(BaseModel):
     id: str
-    origin: Optional[MessageOrigin]
+    origin: Optional[MessageOrigin] = None
 
 class MessagePricing(BaseModel):
     billable: bool
-    pricing_model: Optional[str]
-    category: Optional[str]
+    pricing_model: Optional[str] = None
+    category: Optional[str] = None
 
 class MessageStatus(BaseModel):
     id: str
     status: str
     timestamp: str
     recipient_id: str
-    conversation: Optional[MessageConversation]
-    pricing: Optional[MessagePricing]
+    conversation: Optional[MessageConversation] = None
+    pricing: Optional[MessagePricing] = None
 
 # ======= METADATA / VALUE / ENTRY =======
 
