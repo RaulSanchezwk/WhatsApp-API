@@ -1,12 +1,11 @@
 from fastapi import FastAPI, Request, Query
 from fastapi.responses import JSONResponse
-from app.infrastructure.database import init_db_pool, get_db_connection
+from app.infrastructure.database.connection import init_db_pool, get_db_connection
 from contextlib import asynccontextmanager
 from app.config import settings
 from app.schemas import WebhookPayload
 from app.domain.entities import Cliente
-from app.usecases.message_flow import manejar_mensaje
-from app.infrastructure.database import get_db_connection
+from app.usecases.message_flow.message_router import manejar_mensaje
 import json
 
 
@@ -44,35 +43,92 @@ async def receive_webhook(request: Request):
         print("❌ Error al parsear a WebhookPayload:", str(e))
         return JSONResponse(status_code=400, content={"error": "Formato inválido", "detalle": str(e)})
 
-    value = payload.entry[0].changes[0].value
+    # value = payload.entry[0].changes[0].value
 
-    if not value.messages or not value.contacts:
-        return {"status": "sin mensajes o sin contacto"}
+    # if not value.messages or not value.contacts:
+    #     return {"status": "sin mensajes o sin contacto"}
 
-    mensaje = value.messages[0].text.body if value.messages[0].text else ""
-    numero = value.messages[0].from_
-    nombre = value.contacts[0].profile.name
+    # mensaje = value.messages[0].text.body if value.messages[0].text else ""
+    # numero = value.messages[0].from_
+    # nombre = value.contacts[0].profile.name
 
-    cliente = Cliente(nombre=nombre, telefono=numero)
+    # cliente = Cliente(nombre=nombre, telefono=numero)
+
     conn_gen = get_db_connection()
     conn = await anext(conn_gen)
 
     try:
-        await manejar_mensaje(cliente, mensaje, conn)
+        await manejar_payload(payload, conn)
     finally:
         await conn.ensure_closed()
 
     return {"status": "ok"}
 
 
-# try:
-    #     citas = await obtener_citas_desde_conn(conn)
-    #     if citas:
-    #         mensaje = "Fechas disponibles:\n" + "\n".join([str(c[0]) for c in citas])
-    #     else:
-    #         mensaje = "No hay fechas disponibles por ahora."
+async def manejar_payload(payload: WebhookPayload, conn):
+    for entry in payload.entry:
+        for change in entry.changes:
+            tipo = change.field
 
-    #     await send_whatsapp_message("528135745910", mensaje)
+            # Verificamos si es tipo mensaje
+            if tipo == "messages":
+                manejar_mensaje(change.value, conn)
 
-    # finally:
-    #     await conn.ensure_closed()  # o conn.close()
+            elif tipo == "statuses":
+                print("🔁 Webhook de tipo status recibido")
+                await manejar_status(conn, change.value)
+
+            else:
+                print(f"⚠️ Tipo de webhook no reconocido: {tipo}")
+
+
+def manejar_status():
+    pass
+
+### Tipos de Webhooks
+
+
+
+## Mensaje Recibido
+ 
+# {
+#   "object": "whatsapp_business_account",
+#   "entry": [
+#     {
+#       "id": "1224129935909135",
+#       "changes": [
+#         {
+#           "value": {
+#             "messaging_product": "whatsapp",
+#             "metadata": {
+#               "display_phone_number": "5218134462645",
+#               "phone_number_id": "589111897626816"
+#             },
+#             "contacts": [
+#               {
+#                 "profile": {
+#                   "name": "Ra\u00fal"
+#                 },
+#                 "wa_id": "5218135745910"
+#               }
+#             ],
+#             "messages": [
+#               {
+#                 "from": "5218135745910",
+#                 "id": "wamid.HBgNNTIxODEzNTc0NTkxMBUCABIYFDNBNTgxMzI3MkYyRTlGOTgzNDNEAA==",
+#                 "timestamp": "1746550314",
+#                 "text": {
+#                   "body": "Hola"
+#                 },
+#                 "type": "text"
+#               }
+#             ]
+#           },
+#           "field": "messages"
+#         }
+#       ]
+#     }
+#   ]
+# }
+
+## Mensaje enviado
