@@ -3,6 +3,11 @@ from fastapi.responses import JSONResponse
 from app.infrastructure.database import init_db_pool, get_db_connection
 from contextlib import asynccontextmanager
 from app.config import settings
+from app.schemas import WebhookPayload
+from app.domain.entities import Cliente
+from app.usecases.message_flow import manejar_mensaje
+from app.infrastructure.database import get_db_connection
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -27,16 +32,28 @@ def verify_webhook(
     return {"error": "Invalid verification token"}, 403
 
 @app.post("/webhook")
-async def receive_webhook(request: Request):
-    data = await request.json()
-    print('Webhook recibido:', data)
+async def receive_webhook(payload: WebhookPayload):
+    print(f"Webhook recibido: {payload}")
+    value = payload.entry[0].changes[0].value
 
+    if not value.messages or not value.contacts:
+        return {"status": "sin mensajes o sin contacto"}
+
+    mensaje = value.messages[0].text.body if value.messages[0].text else ""
+    numero = value.messages[0].from_
+    nombre = value.contacts[0].profile.name
+
+    cliente = Cliente(nombre=nombre, telefono=numero)
     conn_gen = get_db_connection()
     conn = await anext(conn_gen)
 
-    await conn.ensure_closed()
+    try:
+        await manejar_mensaje(cliente, mensaje, conn)
+    finally:
+        await conn.ensure_closed()
 
-    return JSONResponse({"status": "received"})
+    return {"status": "ok"}
+
 
 # try:
     #     citas = await obtener_citas_desde_conn(conn)
