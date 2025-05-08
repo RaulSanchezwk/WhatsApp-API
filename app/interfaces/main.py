@@ -76,7 +76,7 @@ async def manejar_payload(payload):
                 print(f"⚠️ Tipo de webhook no reconocido: {mensaje}")
 
 
-def manejar_status(value):
+async def manejar_status(value):
     pass
 
 ### Tipos de Webhooks
