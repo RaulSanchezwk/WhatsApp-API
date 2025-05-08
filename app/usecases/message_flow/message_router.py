@@ -32,11 +32,11 @@ async def manejar_mensaje_nuevo(wa_id: str, phone_number_id: str, value):
         respuesta_fecha = f"Por favor, elige una fecha:\n{obtener_rango_fechas(5)}"
         await send_whatsapp_text_message(wa_id, respuesta_fecha)
 
-        respuesta_am_pm = "¿Te gustaría agendar una cita en la mañana o en la tarde?"
-        await send_whatsapp_text_message(wa_id, respuesta_am_pm)
+        # respuesta_am_pm = "¿Te gustaría agendar una cita en la mañana o en la tarde?"
+        # await send_whatsapp_text_message(wa_id, respuesta_am_pm)
 
-        respuesta_horarios = f"Por favor, elige una hora para tu cita:\n {obtener_rango_horarios("mañana")}"
-        await send_whatsapp_text_message(wa_id, respuesta_horarios)
+        # respuesta_horarios = f"Por favor, elige una hora para tu cita:\n {obtener_rango_horarios("mañana")}"
+        # await send_whatsapp_text_message(wa_id, respuesta_horarios)
 
 
 async def manejar_mensaje_existente(wa_id: str, phone_number_id: str, value) -> None:

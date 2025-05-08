@@ -59,21 +59,21 @@ async def receive_webhook(request: Request):
     return {"status": "ok"}
 
 
-async def manejar_payload(payload: WebhookPayload):
+async def manejar_payload(payload):
     for entry in payload.entry:
         for change in entry.changes:
-            tipo = change.field
+            mensaje = change.value.statuses == None
 
             # Verificamos si es tipo mensaje
-            if tipo == "messages":
+            if mensaje:
                 await manejar_mensaje(change.value)
 
-            elif tipo == "statuses":
+            elif not mensaje:
                 print("🔁 Webhook de tipo status recibido")
                 await manejar_status(change.value) 
 
             else:
-                print(f"⚠️ Tipo de webhook no reconocido: {tipo}")
+                print(f"⚠️ Tipo de webhook no reconocido: {mensaje}")
 
 
 def manejar_status(value):
