@@ -52,7 +52,7 @@ async def receive_webhook(request: Request):
         payload = WebhookPayload(**data)
     except Exception as e:
         print("❌ Error al parsear a WebhookPayload:", str(e))
-        return JSONResponse(status_code=200)
+        return {"status": "ok"}
 
     await manejar_payload(payload)
 
