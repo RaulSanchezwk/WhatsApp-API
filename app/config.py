@@ -12,11 +12,18 @@ class Settings(BaseSettings):
     PHONE_NUMBER_ID: str
     DEBUG: bool = env == "development"
     ENV: str
-    DB_HOST: str
-    DB_PORT: int
-    DB_USER: str
-    DB_PASSWORD: str
-    DB_NAME: str
+
+    CITAS_DB_HOST: str
+    CITAS_DB_PORT: int
+    CITAS_DB_USER: str
+    CITAS_DB_PASSWORD: str
+    CITAS_DB_NAME: str
+    
+    WEBHOOK_DB_HOST: str
+    WEBHOOK_DB_PORT: int
+    WEBHOOK_DB_USER: str
+    WEBHOOK_DB_PASSWORD: str
+    WEBHOOK_DB_NAME: str
 
 
     class Config:

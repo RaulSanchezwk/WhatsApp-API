@@ -1,17 +1,22 @@
 from fastapi import FastAPI, Request, Query
 from fastapi.responses import JSONResponse
-from app.infrastructure.database.connection import init_db_pool, get_db_connection
 from contextlib import asynccontextmanager
+from app.infrastructure.database.connection import init_db_pools
+from app.infrastructure.database.insertions import save_webhook_notification
 from app.config import settings
-from app.schemas import WebhookPayload
-from app.domain.entities import Cliente
 from app.usecases.message_flow.message_router import manejar_mensaje
+from app.schemas import WebhookPayload
+from app.logging_config import setup_logger
 import json
+import tracemalloc
+
+tracemalloc.start()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await init_db_pool()
+    setup_logger()
+    await init_db_pools()
     yield
 
 app = FastAPI(lifespan=lifespan)
@@ -35,7 +40,13 @@ def verify_webhook(
 async def receive_webhook(request: Request):
     data = await request.json()
 
-    print("Webhook recibido:\n", json.dumps(data, indent=2))
+    print("Webhook recibido:\n", json.dumps(data, indent=1))
+
+    await save_webhook_notification(
+        data=data,
+        ip=request.client.host,
+        user_agent=request.headers.get("user-agent")
+    )
 
     try:
         payload = WebhookPayload(**data)
@@ -43,46 +54,29 @@ async def receive_webhook(request: Request):
         print("❌ Error al parsear a WebhookPayload:", str(e))
         return JSONResponse(status_code=400, content={"error": "Formato inválido", "detalle": str(e)})
 
-    # value = payload.entry[0].changes[0].value
-
-    # if not value.messages or not value.contacts:
-    #     return {"status": "sin mensajes o sin contacto"}
-
-    # mensaje = value.messages[0].text.body if value.messages[0].text else ""
-    # numero = value.messages[0].from_
-    # nombre = value.contacts[0].profile.name
-
-    # cliente = Cliente(nombre=nombre, telefono=numero)
-
-    conn_gen = get_db_connection()
-    conn = await anext(conn_gen)
-
-    try:
-        await manejar_payload(payload, conn)
-    finally:
-        await conn.ensure_closed()
+    await manejar_payload(payload)
 
     return {"status": "ok"}
 
 
-async def manejar_payload(payload: WebhookPayload, conn):
+async def manejar_payload(payload: WebhookPayload):
     for entry in payload.entry:
         for change in entry.changes:
             tipo = change.field
 
             # Verificamos si es tipo mensaje
             if tipo == "messages":
-                manejar_mensaje(change.value, conn)
+                await manejar_mensaje(change.value)
 
             elif tipo == "statuses":
                 print("🔁 Webhook de tipo status recibido")
-                await manejar_status(conn, change.value)
+                await manejar_status(change.value) 
 
             else:
                 print(f"⚠️ Tipo de webhook no reconocido: {tipo}")
 
 
-def manejar_status():
+def manejar_status(value):
     pass
 
 ### Tipos de Webhooks
