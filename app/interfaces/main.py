@@ -1,3 +1,6 @@
+# Desde main.py se reciben las peticiones HTTP y se gestionan los webhooks de WhatsApp.
+# Se utiliza FastAPI para crear la API y manejar las rutas.
+
 from fastapi import FastAPI, Request, Query
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
@@ -7,12 +10,16 @@ from app.config import settings
 from app.usecases.message_flow.message_router import manejar_mensaje
 from app.schemas import WebhookPayload
 from app.logging_config import setup_logger
-import json
 import tracemalloc
 
-tracemalloc.start()
+# Se inicializa el rastreo de memoria para ayudar a identificar problemas de memoria.
+# Esto es útil para el desarrollo y la depuración, pero puede ser costoso en términos de rendimiento.
+# Por lo tanto, se debe usar solo en entornos de desarrollo.
+if settings.DEBUG:
+    tracemalloc.start() 
 
-
+# lifespan es un contexto asincrónico que se utiliza para inicializar recursos al inicio de la aplicación y liberarlos al finalizar.
+# En este caso, se utiliza para configurar el logger y las conexiones a la base de datos.
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     setup_logger()
@@ -21,11 +28,17 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-
+# Se define la ruta raíz de la API, que devuelve un mensaje simple indicando que el bot está activo.
+# Indica también si la aplicación está en modo de desarrollo (DEBUG).
 @app.get("/")
 def root():
     return {"message": "Bot activo", "debug": settings.DEBUG}
 
+# Se define la ruta "/webhook" para la verificación del webhook de WhatsApp.
+# WhatsApp envía una solicitud GET a esta ruta para verificar que el webhook está activo y configurado correctamente.
+# Se espera que la solicitud contenga los parámetros "hub.mode", "hub.verify_token" y "hub.challenge".
+# Si el modo es "subscribe" y el token de verificación coincide con el token configurado, se devuelve el desafío (challenge).
+# Si no coincide, se devuelve un error 403.
 @app.get("/webhook")
 def verify_webhook(
     hub_mode: str = Query(..., alias="hub.mode"),
@@ -36,93 +49,44 @@ def verify_webhook(
         return int(hub_challenge)
     return {"error": "Invalid verification token"}, 403
 
+# Se usa también la ruta "/webhook" para recibir las notificaciones de los mensajes de WhatsApp.
+# WhatsApp envía una solicitud POST a esta ruta cada vez que hay un nuevo mensaje o evento.
+# La función recibe el cuerpo de la solicitud y lo procesa.
+# El cuerpo de la solicitud es un JSON que contiene información sobre el mensaje o evento.
 @app.post("/webhook")
 async def receive_webhook(request: Request):
     data = await request.json()
 
-    print("Webhook recibido:\n", json.dumps(data, indent=1))
+    print(f"\nWebhook recibido: {data}\n")
 
-    await save_webhook_notification(
+    # Guardar la notificación del webhook en la base de datos
+    # y obtener el ID de la fila insertada.
+    last_row_id = await save_webhook_notification(
         data=data,
         ip=request.client.host,
         user_agent=request.headers.get("user-agent")
     )
 
-    try:
-        payload = WebhookPayload(**data)
-    except Exception as e:
-        print("❌ Error al parsear a WebhookPayload:", str(e))
-        JSONResponse(status_code=200, content={"status": "ok"})
 
-    await manejar_payload(payload)
+    value = data["entry"][0]["changes"][0]["value"]
 
-    return JSONResponse(status_code=200, content={"status": "ok"})
+    # Se verifica si el mensaje o el estado están presentes en la notificación.
+    mensaje = value.get("messages") != None
+    status = value.get("statuses") != None
 
+    if mensaje:
+        # Se extraen el ID de WhatsApp y el ID del número de teléfono del mensaje.
+        # Estos IDs son necesarios para enviar mensajes de respuesta a través de la API de WhatsApp.
+        await manejar_mensaje(value, last_row_id)
 
-async def manejar_payload(payload):
-    for entry in payload.entry:
-        for change in entry.changes:
-            mensaje = change.value.statuses == None
+    elif status:
+        await manejar_status(value)
 
-            # Verificamos si es tipo mensaje
-            if mensaje:
-                await manejar_mensaje(change.value)
+    else:
+        print(f"⚠️ Tipo de webhook no reconocido: {mensaje}")
 
-            elif not mensaje:
-                print("🔁 Webhook de tipo status recibido")
-                await manejar_status(change.value) 
-
-            else:
-                print(f"⚠️ Tipo de webhook no reconocido: {mensaje}")
+    return JSONResponse(content={"status": "ok"}, status_code=200)
 
 
 async def manejar_status(value):
     pass
-
-### Tipos de Webhooks
-
-
-
-## Mensaje Recibido
- 
-# {
-#   "object": "whatsapp_business_account",
-#   "entry": [
-#     {
-#       "id": "1224129935909135",
-#       "changes": [
-#         {
-#           "value": {
-#             "messaging_product": "whatsapp",
-#             "metadata": {
-#               "display_phone_number": "5218134462645",
-#               "phone_number_id": "589111897626816"
-#             },
-#             "contacts": [
-#               {
-#                 "profile": {
-#                   "name": "Ra\u00fal"
-#                 },
-#                 "wa_id": "5218135745910"
-#               }
-#             ],
-#             "messages": [
-#               {
-#                 "from": "5218135745910",
-#                 "id": "wamid.HBgNNTIxODEzNTc0NTkxMBUCABIYFDNBNTgxMzI3MkYyRTlGOTgzNDNEAA==",
-#                 "timestamp": "1746550314",
-#                 "text": {
-#                   "body": "Hola"
-#                 },
-#                 "type": "text"
-#               }
-#             ]
-#           },
-#           "field": "messages"
-#         }
-#       ]
-#     }
-#   ]
-# }
-
-## Mensaje enviado
