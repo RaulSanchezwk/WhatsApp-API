@@ -1,5 +1,6 @@
 from app.infrastructure.whatsapp_client import send_whatsapp_text_message
-from app.infrastructure.database.queries import ya_existe_contacto, fechas_con_disponibilidad
+from app.infrastructure.database.queries import ya_existe_contacto, fechas_con_disponibilidad, obtener_estado
+from app.infrastructure.database.insertions import cambiar_estado
 from datetime import datetime, timedelta, date
 from babel.dates import format_datetime
 
@@ -23,12 +24,6 @@ async def manejar_cliente_nuevo(value: dict, webhook_DB_id: int) -> None:
     # Cuando se libere el bot, se eliminará esta lista y su lógica.
     wa_id = value["contacts"][0]["wa_id"]
 
-    numeros_permitidos = ['5218135745910', '5218123302217', '5218144883499', '5218116965030', '5218129133326', '5218119043177', '5218182803998', '5218110444217', '5218131240968', '5218182808236']
-
-    if wa_id in numeros_permitidos:
-        respuesta_fecha = f"Por favor, elige una fecha:\n{await formatear_fechas_disponibles(5)}"
-        await send_whatsapp_text_message(wa_id, respuesta_fecha)
-
         # respuesta_am_pm = "¿Te gustaría agendar una cita en la mañana o en la tarde?"
         # await send_whatsapp_text_message(wa_id, respuesta_am_pm)
 
@@ -38,8 +33,29 @@ async def manejar_cliente_nuevo(value: dict, webhook_DB_id: int) -> None:
 
 async def manejar_cliente_existente(value, webhook_DB_id) -> None:
     wa_id = value["contacts"][0]["wa_id"]
-    profile_name = value["contacts"][0]["profile"]["name"] 
-    await send_whatsapp_text_message(wa_id, f"Yo te conozco... ¿verdad {profile_name}?")
+    profile_name = value["contacts"][0]["profile"]["name"]
+    numeros_permitidos = ['5218135745910', '5218123302217', '5218144883499', '5218116965030', '5218129133326', '5218119043177', '5218182803998', '5218110444217', '5218131240968', '5218182808236']
+
+    if wa_id in numeros_permitidos:
+        estado = await obtener_estado(wa_id, webhook_DB_id)
+        if estado == 0:
+            print("No se ha encontrado el estado")
+        if estado == 1:
+            respuesta_fecha = f"Por favor, elige una fecha:\n{await formatear_fechas_disponibles(5)}"
+            await send_whatsapp_text_message(wa_id, respuesta_fecha)
+            await cambiar_estado(wa_id, webhook_DB_id, 2)
+        elif estado == 2:
+            rango_horarios = "Por favor, elige un rango de horarios:\n1: 9-12\n2:12-3\n3: 3-6"
+            await send_whatsapp_text_message(wa_id, rango_horarios)
+            await cambiar_estado(wa_id, webhook_DB_id, 3)
+        elif estado == 3:
+            respuesta_horarios = f"Por favor, elige una hora:\n{obtener_rango_fechas(5)}"
+            await send_whatsapp_text_message(wa_id, respuesta_horarios)
+            await cambiar_estado(wa_id, webhook_DB_id, 4)
+
+
+    await send_whatsapp_text_message(wa_id, f"")
+    #await send_whatsapp_text_message(wa_id, f"Yo te conozco... ¿verdad {profile_name}?")
 
 async def formatear_fechas_disponibles(dias_a_generar: int) -> str:
     fecha_inicial = datetime.today() + timedelta(days=1)  # Se establece la fecha inicial como mañana

@@ -56,3 +56,18 @@ async def fechas_con_disponibilidad(fecha_inicio, fecha_fin) -> list:
         logger.exception("❌ Error consultando las fechas")
         print(e)
         return []
+    
+async def obtener_estado(wa_id: str, webhook_DB_id: int) -> int:
+    try:
+        async with connection_context(get_webhook_connection) as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("""
+                    SELECT estado
+                    FROM webhook_notification
+                    WHERE wa_id = %s AND id = %s
+                """, (wa_id, webhook_DB_id))
+                result = await cur.fetchone()
+                return result[0] if result else 0
+    except Exception as e:
+        logger.exception("❌ Error consultando el estado")
+        return 0
