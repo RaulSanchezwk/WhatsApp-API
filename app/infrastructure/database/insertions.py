@@ -40,7 +40,7 @@ async def save_webhook_notification(data: dict, ip: str, user_agent: str) -> int
                     notification_json,
                     ip,
                     user_agent,
-                    wa_id,
+                    "1",
                     1
                 ))
 

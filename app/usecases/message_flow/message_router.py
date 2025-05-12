@@ -1,6 +1,6 @@
 from app.infrastructure.whatsapp_client import send_whatsapp_text_message
 from app.infrastructure.database.queries import ya_existe_contacto, fechas_con_disponibilidad, obtener_estado
-from app.infrastructure.database.insertions import cambiar_estado
+from app.infrastructure.database.updates import cambiar_estado
 from datetime import datetime, timedelta, date
 from babel.dates import format_datetime
 
@@ -23,6 +23,8 @@ async def manejar_cliente_nuevo(value: dict, webhook_DB_id: int) -> None:
     # Estos números son los únicos que pueden interactuar con el bot.
     # Cuando se libere el bot, se eliminará esta lista y su lógica.
     wa_id = value["contacts"][0]["wa_id"]
+    respuesta_fecha = f"Por favor, elige una fecha:\n{await formatear_fechas_disponibles(5)}"
+    await send_whatsapp_text_message(wa_id, respuesta_fecha)
 
         # respuesta_am_pm = "¿Te gustaría agendar una cita en la mañana o en la tarde?"
         # await send_whatsapp_text_message(wa_id, respuesta_am_pm)
