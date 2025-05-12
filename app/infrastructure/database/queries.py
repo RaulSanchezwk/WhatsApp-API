@@ -45,6 +45,9 @@ async def fechas_con_disponibilidad(fecha_inicio, fecha_fin) -> list:
                                      ORDER BY fecha;""",
                                      (fecha_inicio, fecha_fin))
                 result = await cur.fetchall()
+
+                await cur.close()
+                
                 return [
                     {
                         "fecha": row[0],
@@ -66,8 +69,13 @@ async def obtener_estado(wa_id: str, webhook_DB_id: int) -> int:
                     FROM webhook_notification
                     WHERE wa_id = %s AND id = %s
                 """, (wa_id, webhook_DB_id))
+
                 result = await cur.fetchone()
+
+                await cur.close()
+
                 return result[0] if result else 0
+            
     except Exception as e:
         logger.exception("❌ Error consultando el estado")
         return 0

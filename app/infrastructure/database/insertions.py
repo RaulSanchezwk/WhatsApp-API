@@ -43,14 +43,17 @@ async def save_webhook_notification(data: dict, ip: str, user_agent: str) -> int
                     "1",
                     1
                 ))
-
                 await conn.commit()
                 # Se retorna el ID de la última fila insertada.
                 if cur.lastrowid is not None:
+                    await cur.close()
                     return cur.lastrowid
                 else:
                     logger.error("❌ cur.lastrowid is None, returning -1")
+                    cur.close()
                     return -1
+                
+                
 
     except (Exception, sql_error) as e:
         logger.exception("❌ Error al guardar webhook_notification")

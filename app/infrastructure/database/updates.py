@@ -13,6 +13,7 @@ async def cambiar_estado(wa_id: str, status: int, webhook_DB_id: int) -> bool:
                     WHERE wa_id = %s AND id = %s
                 """, (status, wa_id, webhook_DB_id))
                 await conn.commit()
+                await cur.close()
                 return True
     except Exception as e:
         logger.exception("❌ Error actualizando el estado del webhook")

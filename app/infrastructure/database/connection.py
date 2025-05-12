@@ -56,6 +56,13 @@ async def get_webhook_connection():
 #         await cur.execute(...)
 @asynccontextmanager
 async def connection_context(getter):
-    async for conn in getter():
-        yield conn
-        break  # Rompe el loop tras la primera conexión
+    conn = None
+    try:
+        async for c in getter():
+            conn = c
+            yield conn
+            break  # Rompe el loop tras la primera conexión
+    finally:
+        if conn:
+            conn.close()  # Cierra correctamente la conexión
+            await conn.ensure_closed()
