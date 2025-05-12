@@ -29,7 +29,7 @@ async def save_webhook_notification(data: dict, ip: str, user_agent: str) -> int
                         notification_json,
                         source_ip,
                         user_agent,
-                        wa_id,
+                        wa_id
                     ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 """, (
                     messaging_product,
@@ -52,5 +52,6 @@ async def save_webhook_notification(data: dict, ip: str, user_agent: str) -> int
 
     except (Exception, sql_error) as e:
         logger.exception("❌ Error al guardar webhook_notification")
+        print(f"{e}")
         # se retorna -1 en caso de error para poder manejar el error después en el código
         return -1

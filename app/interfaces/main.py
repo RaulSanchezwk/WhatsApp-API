@@ -57,22 +57,23 @@ def verify_webhook(
 async def receive_webhook(request: Request):
     data = await request.json()
 
-    print(f"\nWebhook recibido: {data}\n")
-
-    # Guardar la notificación del webhook en la base de datos
-    # y obtener el ID de la fila insertada.
-    last_row_id = await save_webhook_notification(
-        data=data,
-        ip=request.client.host,
-        user_agent=request.headers.get("user-agent")
-    )
-
 
     value = data["entry"][0]["changes"][0]["value"]
 
     # Se verifica si el mensaje o el estado están presentes en la notificación.
     mensaje = value.get("messages") != None
     status = value.get("statuses") != None
+    
+    print(f"\nWebhook recibido: {data}\n")
+
+    # Guardar la notificación del webhook en la base de datos
+    # y obtener el ID de la fila insertada.
+    if mensaje:
+        last_row_id = await save_webhook_notification(
+            data=data,
+            ip=request.client.host,
+            user_agent=request.headers.get("user-agent")
+        )
 
     if mensaje:
         # Se extraen el ID de WhatsApp y el ID del número de teléfono del mensaje.

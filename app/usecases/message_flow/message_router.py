@@ -7,8 +7,9 @@ from babel.dates import format_datetime
 # La función recibe el ID de WhatsApp, el ID del número de teléfono y 
 # el ID del webhook de la base de datos (last_row_id).
 async def manejar_mensaje(value: dict, webhook_DB_id) -> None:
-
-    ya_existe = False # await ya_existe_contacto(wa_id, phone_number_id)
+    wa_id = value["contacts"][0]["wa_id"]
+    phone_number_id = value["metadata"]["phone_number_id"]
+    ya_existe = await ya_existe_contacto(wa_id, phone_number_id)
 
     if ya_existe:
         await manejar_cliente_existente(value, webhook_DB_id)
@@ -38,7 +39,7 @@ async def manejar_cliente_nuevo(value: dict, webhook_DB_id: int) -> None:
 async def manejar_cliente_existente(value, webhook_DB_id) -> None:
     wa_id = value["contacts"][0]["wa_id"]
     profile_name = value["contacts"][0]["profile"]["name"] 
-    # await send_whatsapp_text_message(wa_id, f"Yo te conozco... ¿verdad {profile_name}?")
+    await send_whatsapp_text_message(wa_id, f"Yo te conozco... ¿verdad {profile_name}?")
 
 async def formatear_fechas_disponibles(dias_a_generar: int) -> str:
     fecha_inicial = datetime.today() + timedelta(days=1)  # Se establece la fecha inicial como mañana

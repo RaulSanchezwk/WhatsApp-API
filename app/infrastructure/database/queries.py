@@ -11,12 +11,10 @@ async def ya_existe_contacto(wa_id: str, phone_number_id: str) -> bool:
                 await cur.execute("""
                     SELECT EXISTS (
                         SELECT 1
-                        FROM ch_value v
-                        JOIN contact c ON v.id_contact = c.id_contact
-                        JOIN metadata m ON v.id_metadata = m.id_metadata
-                        WHERE c.wa_id = %s AND m.phone_number_id = %s
-                    )
-                """, (wa_id, phone_number_id))
+                        FROM webhook_notification
+                        WHERE wa_id = %s
+                        )""",
+                        (wa_id,))
                 result = await cur.fetchone()
                 return bool(result[0])
     except Exception as e:
