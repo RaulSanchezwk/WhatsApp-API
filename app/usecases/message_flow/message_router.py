@@ -36,7 +36,7 @@ async def manejar_cliente_existente(value, webhook_DB_id: int, id_contact: int) 
     numeros_permitidos = ['5218135745910', '5218123302217', '5218144883499', '5218116965030', '5218129133326', '5218119043177', '5218182803998', '5218110444217', '5218131240968', '5218182808236']
 
     if wa_id in numeros_permitidos:
-        estado = 2#await obtener_estado(id_contact)
+        estado = await obtener_estado(id_contact)
 
         match estado:
             case 1:
