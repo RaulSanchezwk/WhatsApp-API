@@ -1,17 +1,19 @@
 from app.infrastructure.whatsapp_client import send_whatsapp_text_message
-from app.infrastructure.database.queries import ya_existe_contacto, fechas_con_disponibilidad, obtener_estado
+from app.infrastructure.database.queries import ya_existe_contacto, obtener_estado, fechas_con_disponibilidad, rangos_con_disponibilidad, horarios_ocupados
 from app.infrastructure.database.updates import cambiar_estado, relacionar_contacto
 from app.infrastructure.database.insertions import save_contact
 from datetime import datetime, timedelta
 from babel.dates import format_datetime
 
-# Aquí se define la función principal que maneja los mensajes entrantes de WhatsApp.
-# La función recibe el ID de WhatsApp, el ID del número de teléfono y 
-# el ID del webhook de la base de datos (last_row_id).
-async def manejar_mensaje(value: dict, webhook_DB_id: int) -> None:
+async def manejar_mensaje(value: dict, webhook_DB_id: int) -> None:    
+    # Aquí se define la función principal que maneja los mensajes entrantes de WhatsApp.
+    # La función recibe el value del webhook 
+    # y el ID del último webhook que se registró en la base de datos.
+
     wa_id = value["contacts"][0]["wa_id"]
     phone_number_id = value["metadata"]["phone_number_id"]
     contact = await ya_existe_contacto(wa_id)
+    doctor = 43692
 
     if contact:
         await manejar_cliente_existente(value, webhook_DB_id, contact)
@@ -19,24 +21,41 @@ async def manejar_mensaje(value: dict, webhook_DB_id: int) -> None:
     else:
         print("\n\nCliente nuevo\n\n")
         wa_id = value["contacts"][0]["wa_id"]
-        respuesta_fecha = f"Por favor, elige una fecha:\n{await formatear_fechas_disponibles(5)}"
+        respuesta_fecha = f"Por favor, elige una fecha:\n{await formatear_fechas_disponibles(5, doctor)}"
         await send_whatsapp_text_message(wa_id, respuesta_fecha)
         id_contact = await save_contact(wa_id, value["messages"][0]["from"], value["contacts"][0]["profile"]["name"], 1)
         await relacionar_contacto(id_contact, webhook_DB_id)
-
 
 async def manejar_cliente_existente(value, webhook_DB_id: int, id_contact: int) -> None:
     print("\n\nCliente existente\n\n")
     wa_id = value["contacts"][0]["wa_id"]
     profile_name = value["contacts"][0]["profile"]["name"]
+    doctor = 43692
+    rango_horarios = 1
+    fecha = datetime(2025, 5, 13)
     numeros_permitidos = ['5218135745910', '5218123302217', '5218144883499', '5218116965030', '5218129133326', '5218119043177', '5218182803998', '5218110444217', '5218131240968', '5218182808236']
 
     if wa_id in numeros_permitidos:
-        estado = await obtener_estado(id_contact)
-
-        print(f"Estado devuelto: {estado}")
+        estado = 2#await obtener_estado(id_contact)
 
         match estado:
+            case 1:
+                # respuesta_cliente = value["messages"][0]["text"]["body"]
+                # print(f"Respuesta del cliente: {respuesta_cliente}")
+                # respuesta = f"Tu respuesta fue: {respuesta_cliente}"
+
+                # if respuesta not in ["1", "2", "3", "4", "5"]:
+                #     respuesta = "Opción no válida. Por favor, elige una opción válida."
+                #     await send_whatsapp_text_message(wa_id, respuesta)
+                #     return
+                
+                respuesta = f"Elige un rango de horarios:\n{ await formatear_rango_horarios(fecha, doctor) }"
+                await cambiar_estado(id_contact, 2)
+
+            case 2:
+                respuesta = f"Elige un horario:\n{ await formatear_horarios_disponibles(rango_horarios, doctor, fecha) }"
+                await cambiar_estado(id_contact, 3)
+
             case None:
                 respuesta = "No se encontró el estado"
 
@@ -45,15 +64,6 @@ async def manejar_cliente_existente(value, webhook_DB_id: int, id_contact: int) 
 
             case 0:
                 respuesta = f"Paso 0, esto no debería de mostrarse"
-                await cambiar_estado(id_contact, 1)
-
-            case 1:
-                respuesta = "Por favor, elige un rango de horarios:\n1: 9-12\n2:12-3\n3: 3-6"
-                await cambiar_estado(id_contact, 2)
-
-            case 2:
-                respuesta = f"Por favor, elige una hora:\n{obtener_rango_fechas(5)}"
-                await cambiar_estado(id_contact, 3)
 
             case _:
                 respuesta = "Caso no contemplado. Haz llegado al fin."
@@ -64,7 +74,7 @@ async def manejar_cliente_existente(value, webhook_DB_id: int, id_contact: int) 
 
     #await send_whatsapp_text_message(wa_id, f"Yo te conozco... ¿verdad {profile_name}?")
 
-async def formatear_fechas_disponibles(dias_a_generar: int) -> str:
+async def formatear_fechas_disponibles(dias_a_generar: int, doctor: int) -> str:
     # Se establece la fecha inicial como mañana a las 00:00
     fecha_inicial = datetime.combine(datetime.today(), datetime.min.time()) + timedelta(days=1)
     # Se establece la fecha final como la fecha inicial + el número de días a generar
@@ -84,8 +94,6 @@ async def formatear_fechas_disponibles(dias_a_generar: int) -> str:
             # (miércoles, 1 de enero de 2025)
             text += f"{i+1} - {format_datetime(fecha['fecha'], 'EEEE, d \'de\' MMMM \'de\' y', locale='es_ES')}\nEspacios: {28 - fecha['total_citas']}\n\n"
         
-        return text
-        
     except Exception as e:
         print(f"Error al obtener fechas: {e}")
         text = f"{e}"
@@ -93,104 +101,63 @@ async def formatear_fechas_disponibles(dias_a_generar: int) -> str:
     finally:
         return text
 
-async def formatear_horarios_disponibles(fecha: str, rango_horarios: str) -> str:
-    # Esta función se encarga de formatear los horarios disponibles para una fecha específica.
-    # Recibe como parámetros la fecha y el rango de horarios.
-
-    if rango_horarios == "9-12":
-        hora_inicio = datetime.strptime("09:00", "%H:%M").time()
-        hora_fin = datetime.strptime("12:00", "%H:%M").time()
-    elif rango_horarios == "12-3":
-        hora_inicio = datetime.strptime("12:00", "%H:%M").time()
-        hora_fin = datetime.strptime("15:00", "%H:%M").time()
-    elif rango_horarios == "3-6":
-        hora_inicio = datetime.strptime("15:00", "%H:%M").time()
-        hora_fin = datetime.strptime("18:00", "%H:%M").time()
-    
-
-
+async def formatear_rango_horarios(fecha: str, doctor: int) -> str:
     try:
-        text = f"Horarios disponibles para {fecha}:\n"
-        for i, horario in enumerate(rango_horarios):
-            text += f"{i+1} - {horario}\n"
-        return text
+        rangos_con_espacios = await rangos_con_disponibilidad(fecha, doctor)
+
+        print(f"\nRangos: {rangos_con_espacios}\n\n")
+
+        text = ''
+
+        for i, rango in enumerate(rangos_con_espacios):
+            text += f"{i+1} - {rango['rango']}\n\n"
+
     except Exception as e:
-        print(f"Error al formatear horarios: {e}")
-        return str(e)
-
-def obtener_rango_fechas(dias_a_generar: int) -> str:
-    # Esta función se encarga de obtener un rango de fechas en los que se puede agendar una cita.
-
-    fecha_inicial = datetime.today() + timedelta(days=1)  # Se establece la fecha inicial como mañana
-
-    # Se genera un rango de fechas desde la fecha inicial hasta el número de días a generar + 1,
-    # este +1 está ya que se filtran las fechas para eliminar los domingos (weekday() != 6)
-    # y en caso de el rango de fechas no contenga un domingo se agrega un día más
-    # para luego filtrar solo {dias_a_generar} días hábiles.
-    rango_fechas = [
-    fecha_inicial + timedelta(days=i)
-    for i in range(dias_a_generar + 1)
-    if (fecha_inicial + timedelta(days=i)).weekday() != 6
-    ][:dias_a_generar]
-
-    rango_fechas_format = []
-    for fecha in rango_fechas:
-        rango_fechas_format.append(format_datetime(fecha, 'EEEE, d \'de\' MMMM \'de\' y', locale='es_ES'))
-
-    rango_horarios = {}
-    for fecha in rango_fechas_format:
-        rango_horarios[fecha] = obtener_rango_horarios()
-
-    # for key, value in rango_horarios:
-    #     #fecha_dt = datetime.combine(fecha, datetime.min.time())  # convierte date → datetime
-    #     # Se formatea la fecha en español usando Babel
-    #     # Se utiliza el formato "EEEE, d 'de' MMMM 'de' y"
-    #     # (miércoles, 1 de enero de 2025)
-    #     text += f"{1} - {format_datetime(key, 'EEEE, d \'de\' MMMM \'de\' y', locale='es_ES')} : {value}\n\n"
-
-    text = ''
-    for i, fecha in enumerate(rango_horarios.keys()):
-        text += f"\n\n{i+1} - {fecha}:\n"
-        for j, horario in enumerate(rango_horarios[fecha]):
-            text += f"{i+1}.{j+1} - {horario}\n"
-    print(text)
-
-    return text
-
-# Esta función se encarga de obtener un rango de horarios en los que se puede agendar una cita.
-# Recibe un string que indica el horario ("9-12", "12-3" o "3-6").
-def obtener_rango_horarios() -> str: #horario: str
-    # if horario == "9-12":
-    #     horario_inicio = datetime.strptime("09:00", "%H:%M").time()
-    #     horario_fin = datetime.strptime("12:00", "%H:%M").time()
-    # if horario == "12-3":
-    #     horario_inicio = datetime.strptime("12:00", "%H:%M").time()
-    #     horario_fin = datetime.strptime("15:00", "%H:%M").time()
-    # elif horario == "3-6":
-    #     horario_inicio = datetime.strptime("15:00", "%H:%M").time()
-    #     horario_fin = datetime.strptime("18:00", "%H:%M").time()
-    horario_inicio = datetime.strptime("09:00", "%H:%M").time()
-    horario_fin = datetime.strptime("18:00", "%H:%M").time()
-
-    # Sólo se pueden agendar citas cada 15 minutos desde redes sociales
-    intervalo = timedelta(minutes=15)
-    horarios = []
-    hora_actual = datetime.combine(datetime.today(), horario_inicio)
+        print(f"Error al formatear el rango de horarios: {e}")
+        text = f"{e}"
     
+    finally:
+        return text
 
-    while hora_actual.time() <= horario_fin:
+async def formatear_horarios_disponibles(rango_horarios: int, doctor: int, fecha: datetime) -> str:
+    if rango_horarios == 1:
+        hora_inicio = datetime.strptime("09:00", "%H:%M").time()
+        hora_fin = datetime.strptime("11:59", "%H:%M").time()
+
+    elif rango_horarios == 2:
+        hora_inicio = datetime.strptime("12:00", "%H:%M").time()
+        hora_fin = datetime.strptime("14:59", "%H:%M").time()
+
+    elif rango_horarios == 3:
+        hora_inicio = datetime.strptime("15:00", "%H:%M").time()
+        hora_fin = datetime.strptime("17:59", "%H:%M").time()
+
+
+    intervalo = timedelta(minutes=15) # Sólo se pueden agendar citas cada 15 minutos desde redes sociales
+    todos_los_horarios = []
+    hora_actual = datetime.combine(datetime.today(), hora_inicio)
+    
+    while hora_actual.time() <= hora_fin:
         # No se pueden agendar citas después de las {hora}:45
         # Es decir, la última cita se puede agendar a las {hora}:30
         # (1:30, 2:30, 3:30, 4:30...)
         if hora_actual.minute < 45:
-            horarios.append(hora_actual.strftime("%H:%M"))
+            todos_los_horarios.append(hora_actual.strftime("%H:%M"))
 
         hora_actual += intervalo
 
+    text = ''
 
-    # text = ''
+    try:
+        horas_ocupadas = await horarios_ocupados(doctor, fecha, hora_inicio, hora_fin)
+        horarios_disponibles = list(set(todos_los_horarios) - set(horas_ocupadas))
 
-    # for i, horario in enumerate(horarios):
-    #     text += f"{i+1} - {horario}\n"
+        horarios_disponibles = sorted(horarios_disponibles)
 
-    return horarios
+        for i, horario in enumerate(horarios_disponibles):
+            text += f"{i+1} - {horario}\n"
+        return text
+    
+    except Exception as e:
+        print(f"Error al formatear horarios: {e}")
+        return str(e)
