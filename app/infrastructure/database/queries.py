@@ -15,7 +15,11 @@ async def ya_existe_contacto(wa_id: str, phone_number_id: str) -> bool:
                         WHERE wa_id = %s
                         )""",
                         (wa_id,))
+                
                 result = await cur.fetchone()
+
+                await cur.close()
+
                 return bool(result[0])
     except Exception as e:
         logger.exception("❌ Error consultando si ya existe el contacto")
@@ -47,7 +51,7 @@ async def fechas_con_disponibilidad(fecha_inicio, fecha_fin) -> list:
                 result = await cur.fetchall()
 
                 await cur.close()
-                
+
                 return [
                     {
                         "fecha": row[0],
@@ -67,7 +71,7 @@ async def obtener_estado(wa_id: str, webhook_DB_id: int) -> int:
                 await cur.execute("""
                     SELECT estado
                     FROM webhook_notification
-                    WHERE wa_id = %s AND id = %s
+                    WHERE wa_id = %s AND id_notification = %s;
                 """, (wa_id, webhook_DB_id))
 
                 result = await cur.fetchone()
@@ -78,4 +82,5 @@ async def obtener_estado(wa_id: str, webhook_DB_id: int) -> int:
             
     except Exception as e:
         logger.exception("❌ Error consultando el estado")
+        print(e)
         return 0

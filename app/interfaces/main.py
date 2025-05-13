@@ -75,7 +75,6 @@ async def receive_webhook(request: Request):
             user_agent=request.headers.get("user-agent")
         )
 
-    if mensaje:
         # Se extraen el ID de WhatsApp y el ID del número de teléfono del mensaje.
         # Estos IDs son necesarios para enviar mensajes de respuesta a través de la API de WhatsApp.
         await manejar_mensaje(value, last_row_id)

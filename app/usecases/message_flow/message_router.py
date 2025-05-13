@@ -1,13 +1,13 @@
 from app.infrastructure.whatsapp_client import send_whatsapp_text_message
 from app.infrastructure.database.queries import ya_existe_contacto, fechas_con_disponibilidad, obtener_estado
-from app.infrastructure.database.updates import cambiar_estado
+from app.infrastructure.database.updates import cambiar_estado, agregar_contacto
 from datetime import datetime, timedelta, date
 from babel.dates import format_datetime
 
 # Aquí se define la función principal que maneja los mensajes entrantes de WhatsApp.
 # La función recibe el ID de WhatsApp, el ID del número de teléfono y 
 # el ID del webhook de la base de datos (last_row_id).
-async def manejar_mensaje(value: dict, webhook_DB_id) -> None:
+async def manejar_mensaje(value: dict, webhook_DB_id: int) -> None:
     wa_id = value["contacts"][0]["wa_id"]
     phone_number_id = value["metadata"]["phone_number_id"]
     ya_existe = await ya_existe_contacto(wa_id, phone_number_id)
@@ -15,45 +15,40 @@ async def manejar_mensaje(value: dict, webhook_DB_id) -> None:
     if ya_existe:
         await manejar_cliente_existente(value, webhook_DB_id)
     else:
-        await manejar_cliente_nuevo(value, webhook_DB_id)
-        
-
-async def manejar_cliente_nuevo(value: dict, webhook_DB_id: int) -> None: 
-    # Aquí se define una lista de números permitidos para el flujo de mensajes.
-    # Estos números son los únicos que pueden interactuar con el bot.
-    # Cuando se libere el bot, se eliminará esta lista y su lógica.
-    wa_id = value["contacts"][0]["wa_id"]
-    respuesta_fecha = f"Por favor, elige una fecha:\n{await formatear_fechas_disponibles(5)}"
-    await send_whatsapp_text_message(wa_id, respuesta_fecha)
-
-        # respuesta_am_pm = "¿Te gustaría agendar una cita en la mañana o en la tarde?"
-        # await send_whatsapp_text_message(wa_id, respuesta_am_pm)
-
-        # respuesta_horarios = f"Por favor, elige una hora para tu cita:\n {obtener_rango_horarios("mañana")}"
-        # await send_whatsapp_text_message(wa_id, respuesta_horarios)
+        wa_id = value["contacts"][0]["wa_id"]
+        respuesta_fecha = f"Por favor, elige una fecha:\n{await formatear_fechas_disponibles(5)}"
+        await send_whatsapp_text_message(wa_id, respuesta_fecha)
+        await agregar_contacto(wa_id, webhook_DB_id)
+        await cambiar_estado(wa_id, 1,webhook_DB_id)
 
 
-async def manejar_cliente_existente(value, webhook_DB_id) -> None:
+async def manejar_cliente_existente(value, webhook_DB_id: int) -> None:
     wa_id = value["contacts"][0]["wa_id"]
     profile_name = value["contacts"][0]["profile"]["name"]
     numeros_permitidos = ['5218135745910', '5218123302217', '5218144883499', '5218116965030', '5218129133326', '5218119043177', '5218182803998', '5218110444217', '5218131240968', '5218182808236']
 
     if wa_id in numeros_permitidos:
         estado = await obtener_estado(wa_id, webhook_DB_id)
-        if estado == 0:
-            print("No se ha encontrado el estado")
-        if estado == 1:
-            respuesta_fecha = f"Por favor, elige una fecha:\n{await formatear_fechas_disponibles(5)}"
-            await send_whatsapp_text_message(wa_id, respuesta_fecha)
-            await cambiar_estado(wa_id, webhook_DB_id, 2)
-        elif estado == 2:
-            rango_horarios = "Por favor, elige un rango de horarios:\n1: 9-12\n2:12-3\n3: 3-6"
-            await send_whatsapp_text_message(wa_id, rango_horarios)
-            await cambiar_estado(wa_id, webhook_DB_id, 3)
-        elif estado == 3:
-            respuesta_horarios = f"Por favor, elige una hora:\n{obtener_rango_fechas(5)}"
-            await send_whatsapp_text_message(wa_id, respuesta_horarios)
-            await cambiar_estado(wa_id, webhook_DB_id, 4)
+
+        match estado:
+            case -1:
+                print("No se ha encontrado el estado")
+
+            case 0:
+                respuesta_fecha = f"Por favor, elige una fecha:\n{await formatear_fechas_disponibles(5)}"
+                await send_whatsapp_text_message(wa_id, respuesta_fecha)
+                await cambiar_estado(wa_id, webhook_DB_id, 2)
+
+            case 1:
+                rango_horarios = "Por favor, elige un rango de horarios:\n1: 9-12\n2:12-3\n3: 3-6"
+                await send_whatsapp_text_message(wa_id, rango_horarios)
+                await cambiar_estado(wa_id, webhook_DB_id, 3)
+
+            case 2:
+                respuesta_horarios = f"Por favor, elige una hora:\n{obtener_rango_fechas(5)}"
+                await send_whatsapp_text_message(wa_id, respuesta_horarios)
+                await cambiar_estado(wa_id, webhook_DB_id, 4)
+                
 
 
     await send_whatsapp_text_message(wa_id, f"")

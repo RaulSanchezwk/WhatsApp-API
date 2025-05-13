@@ -14,7 +14,6 @@ async def save_webhook_notification(data: dict, ip: str, user_agent: str) -> int
         object_type = data.get("object", "")
         business_account_id = data["entry"][0].get("id", "")
         change_field = data["entry"][0]["changes"][0].get("field", "")
-        wa_id = "1"#data["entry"][0]["changes"][0]["value"].get("contacts", [{}])[0].get("wa_id", "")
         notification_json = json.dumps(data)
 
 
@@ -28,10 +27,8 @@ async def save_webhook_notification(data: dict, ip: str, user_agent: str) -> int
                         change_field,
                         notification_json,
                         source_ip,
-                        user_agent,
-                        wa_id,
-                        estado
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        user_agent
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s)
                 """, (
                     messaging_product,
                     object_type,
@@ -39,9 +36,7 @@ async def save_webhook_notification(data: dict, ip: str, user_agent: str) -> int
                     change_field,
                     notification_json,
                     ip,
-                    user_agent,
-                    "1",
-                    1
+                    user_agent
                 ))
                 await conn.commit()
                 # Se retorna el ID de la última fila insertada.
