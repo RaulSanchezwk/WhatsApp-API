@@ -3,28 +3,27 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-async def ya_existe_contacto(wa_id: str, phone_number_id: str) -> bool:
+async def ya_existe_contacto(wa_id: str) -> int:
 
     try:
         async with connection_context(get_webhook_connection) as conn:
             async with conn.cursor() as cur:
                 await cur.execute("""
-                    SELECT EXISTS (
-                        SELECT 1
-                        FROM webhook_notification
-                        WHERE wa_id = %s
-                        )""",
-                        (wa_id,))
-                
+                    SELECT id_contact 
+                    FROM contact 
+                    WHERE wa_id = %s;
+                """, (wa_id,))
+
                 result = await cur.fetchone()
 
                 await cur.close()
 
-                return bool(result[0])
+                return result[0] if result else None
     except Exception as e:
         logger.exception("❌ Error consultando si ya existe el contacto")
-        return False
-    
+        print(e)
+        return None
+
 async def fechas_con_disponibilidad(fecha_inicio, fecha_fin) -> list:
     try:
         async with connection_context(get_citas_connection) as conn:
@@ -63,24 +62,26 @@ async def fechas_con_disponibilidad(fecha_inicio, fecha_fin) -> list:
         logger.exception("❌ Error consultando las fechas")
         print(e)
         return []
-    
-async def obtener_estado(wa_id: str, webhook_DB_id: int) -> int:
+
+async def obtener_estado(id_contact: int) -> int:
     try:
         async with connection_context(get_webhook_connection) as conn:
             async with conn.cursor() as cur:
                 await cur.execute("""
                     SELECT estado
-                    FROM webhook_notification
-                    WHERE wa_id = %s AND id_notification = %s;
-                """, (wa_id, webhook_DB_id))
+                    FROM contact
+                    WHERE id_contact = %s;
+                """, (id_contact,))
 
                 result = await cur.fetchone()
 
                 await cur.close()
 
-                return result[0] if result else 0
+                print(f"Estado consultado: {result}")
+
+                return result[0] if result else None
             
     except Exception as e:
         logger.exception("❌ Error consultando el estado")
         print(e)
-        return 0
+        return -1

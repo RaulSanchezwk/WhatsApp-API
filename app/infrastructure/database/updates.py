@@ -3,15 +3,15 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-async def cambiar_estado(wa_id: str, estado: int, webhook_DB_id: int) -> bool:
+async def cambiar_estado(id_contact: int, estado: int) -> bool:
     try:
         async with connection_context(get_webhook_connection) as conn:
             async with conn.cursor() as cur:
                 await cur.execute("""
-                    UPDATE webhook_notification
+                    UPDATE contact
                     SET estado = %s
-                    WHERE wa_id = %s AND id_notification = %s
-                """, (estado, wa_id, webhook_DB_id))
+                    WHERE id_contact = %s
+                """, (estado, id_contact))
 
                 await conn.commit()
                 await cur.close()
@@ -24,19 +24,22 @@ async def cambiar_estado(wa_id: str, estado: int, webhook_DB_id: int) -> bool:
         return False
     
 
-async def agregar_contacto(wa_id: str, webhook_DB_id: int):
+async def relacionar_contacto(id_contact: str, webhook_DB_id: int) -> bool:
     try:
         async with connection_context(get_webhook_connection) as conn:
             async with conn.cursor() as cur:
                 await cur.execute("""
                     UPDATE webhook_notification
-                    SET wa_id = %s
-                    WHERE id_notification = %s;
-                """, (wa_id, webhook_DB_id))
+                    SET id_contact = %s
+                    WHERE id_notification = %s
+                """, (id_contact, webhook_DB_id))
 
                 await conn.commit()
                 await cur.close()
 
+                return True
+            
     except Exception as e:
-        logger.exception("❌ Error agregando el contacto")
+        logger.exception("❌ Error actualizando el estado del webhook")
         print(f"{e}")
+        return False

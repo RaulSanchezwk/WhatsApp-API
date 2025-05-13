@@ -55,3 +55,27 @@ async def save_webhook_notification(data: dict, ip: str, user_agent: str) -> int
         print(f"{e}")
         # se retorna -1 en caso de error para poder manejar el error después en el código
         return -1
+
+async def save_contact(wa_id: str, telefono: str, nombre: str, estado: int) -> int:
+    try:
+        async with connection_context(get_webhook_connection) as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("""
+                    INSERT INTO contact (wa_id, display_phone_number, contact_name, estado)
+                    VALUES (%s, %s, %s, %s)
+                """, (wa_id, telefono, nombre, estado))
+
+                await conn.commit()
+                last_row_id = cur.lastrowid
+
+                if last_row_id is not None:
+                    await cur.close()
+                    return last_row_id
+                else:
+                    logger.error("❌ cur.lastrowid is None, returning -1")
+                    await cur.close()
+                    return -1
+
+    except (Exception, sql_error) as e:
+        logger.exception("❌ Error al guardar contacto")
+        print(f"{e}")
