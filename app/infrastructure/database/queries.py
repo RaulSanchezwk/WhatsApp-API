@@ -25,13 +25,14 @@ async def ya_existe_contacto(wa_id: str) -> int:
         print(e)
         return None
 
-async def fechas_con_disponibilidad(fecha_inicio, fecha_fin) -> list:
+async def fechas_con_disponibilidad(fecha_inicio, fecha_fin, doctor: int) -> list:
     try:
         async with connection_context(get_citas_connection) as conn:
             async with conn.cursor() as cur:
                 await cur.execute("""SELECT fecha, COUNT(DISTINCT hora) AS total_citas
                                      FROM dmty_citas
                                      WHERE (fecha BETWEEN %s AND %s)
+                                     AND doctor = %s
                                      AND (hora BETWEEN '9:00:00' AND '18:00:00')
                                      AND hora NOT IN (
                                      '09:45:00',
@@ -47,7 +48,7 @@ async def fechas_con_disponibilidad(fecha_inicio, fecha_fin) -> list:
                                      GROUP BY fecha
                                      HAVING total_citas < 29
                                      ORDER BY fecha;""",
-                                     (fecha_inicio, fecha_fin))
+                                     (fecha_inicio, fecha_fin, doctor))
                 result = await cur.fetchall()
 
                 await cur.close()

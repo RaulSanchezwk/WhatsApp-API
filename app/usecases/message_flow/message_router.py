@@ -14,25 +14,33 @@ async def manejar_mensaje(value: dict, webhook_DB_id: int) -> None:
     phone_number_id = value["metadata"]["phone_number_id"]
     contact = await ya_existe_contacto(wa_id)
     doctor = 43692
+    dias_a_generar = 5
 
     if contact:
         await manejar_cliente_existente(value, webhook_DB_id, contact)
         await relacionar_contacto(contact, webhook_DB_id)
+        
     else:
-        print("\n\nCliente nuevo\n\n")
-        wa_id = value["contacts"][0]["wa_id"]
-        respuesta_fecha = f"Por favor, elige una fecha:\n{await formatear_fechas_disponibles(5, doctor)}"
+        fechas_con_espacios = await formatear_fechas_disponibles(dias_a_generar, doctor)
+        text = ''
+        for i, fecha in enumerate(fechas_con_espacios):
+            # Se formatea la fecha en español usando Babel
+            # Se utiliza el formato "EEEE, d 'de' MMMM 'de' y"
+            # (miércoles, 1 de enero de 2025)
+            text += f"{i+1} - {format_datetime(fecha['fecha'], 'EEEE, d \'de\' MMMM \'de\' y', locale='es_ES')}\nEspacios: {28 - fecha['total_citas']}\n\n"
+        
+        respuesta_fecha = f"Por favor, elige una fecha:\n{text}"
         await send_whatsapp_text_message(wa_id, respuesta_fecha)
+        
         id_contact = await save_contact(wa_id, value["messages"][0]["from"], value["contacts"][0]["profile"]["name"], 1)
         await relacionar_contacto(id_contact, webhook_DB_id)
 
 async def manejar_cliente_existente(value, webhook_DB_id: int, id_contact: int) -> None:
-    print("\n\nCliente existente\n\n")
+    
     wa_id = value["contacts"][0]["wa_id"]
     profile_name = value["contacts"][0]["profile"]["name"]
     doctor = 43692
     rango_horarios = 1
-    fecha = datetime(2025, 5, 13)
     numeros_permitidos = ['5218135745910', '5218123302217', '5218144883499', '5218116965030', '5218129133326', '5218119043177', '5218182803998', '5218110444217', '5218131240968', '5218182808236']
 
     if wa_id in numeros_permitidos:
@@ -40,20 +48,14 @@ async def manejar_cliente_existente(value, webhook_DB_id: int, id_contact: int) 
 
         match estado:
             case 1:
-                # respuesta_cliente = value["messages"][0]["text"]["body"]
-                # print(f"Respuesta del cliente: {respuesta_cliente}")
-                # respuesta = f"Tu respuesta fue: {respuesta_cliente}"
-
-                # if respuesta not in ["1", "2", "3", "4", "5"]:
-                #     respuesta = "Opción no válida. Por favor, elige una opción válida."
-                #     await send_whatsapp_text_message(wa_id, respuesta)
-                #     return
+                respuesta_cliente = value["messages"][0]["text"]["body"]
                 
-                respuesta = f"Elige un rango de horarios:\n{ await formatear_rango_horarios(fecha, doctor) }"
+                respuesta = await enviar_rango_horarios(respuesta_cliente, doctor)
+
                 await cambiar_estado(id_contact, 2)
 
             case 2:
-                respuesta = f"Elige un horario:\n{ await formatear_horarios_disponibles(rango_horarios, doctor, fecha) }"
+                #respuesta = f"Elige un horario:\n{ await formatear_horarios_disponibles(rango_horarios, doctor, fecha) }"
                 await cambiar_estado(id_contact, 3)
 
             case None:
@@ -74,32 +76,24 @@ async def manejar_cliente_existente(value, webhook_DB_id: int, id_contact: int) 
 
     #await send_whatsapp_text_message(wa_id, f"Yo te conozco... ¿verdad {profile_name}?")
 
-async def formatear_fechas_disponibles(dias_a_generar: int, doctor: int) -> str:
-    # Se establece la fecha inicial como mañana a las 00:00
-    fecha_inicial = datetime.combine(datetime.today(), datetime.min.time()) + timedelta(days=1)
-    # Se establece la fecha final como la fecha inicial + el número de días a generar
-    fecha_final = fecha_inicial + timedelta(days=dias_a_generar)
+async def formatear_fechas_disponibles(dias_a_generar: int, doctor: int) -> list:
+    
+    fecha_inicial = datetime.combine(datetime.today(), datetime.min.time()) + timedelta(days=1) # Se establece la fecha inicial 
+                                                                                                # como mañana a las 00:00
+    
+    fecha_final = fecha_inicial + timedelta(days=dias_a_generar) # Se establece la fecha final como la 
+                                                                 # fecha inicial + el número de días a generar
 
     
-    # Esta función se encarga de obtener las fechas disponibles para agendar una cita.
-    # Recibe como parámetros la fecha de inicio y la fecha de fin.
     try:
-        fechas_con_espacios = await fechas_con_disponibilidad(fecha_inicial, fecha_final)
-        
-        text = ''
-
-        for i, fecha in enumerate(fechas_con_espacios):
-            # Se formatea la fecha en español usando Babel
-            # Se utiliza el formato "EEEE, d 'de' MMMM 'de' y"
-            # (miércoles, 1 de enero de 2025)
-            text += f"{i+1} - {format_datetime(fecha['fecha'], 'EEEE, d \'de\' MMMM \'de\' y', locale='es_ES')}\nEspacios: {28 - fecha['total_citas']}\n\n"
+        fechas_con_espacios = await fechas_con_disponibilidad(fecha_inicial, fecha_final, doctor)
         
     except Exception as e:
         print(f"Error al obtener fechas: {e}")
-        text = f"{e}"
+        fechas_con_espacios = []
     
     finally:
-        return text
+        return fechas_con_espacios
 
 async def formatear_rango_horarios(fecha: str, doctor: int) -> str:
     try:
@@ -161,3 +155,17 @@ async def formatear_horarios_disponibles(rango_horarios: int, doctor: int, fecha
     except Exception as e:
         print(f"Error al formatear horarios: {e}")
         return str(e)
+    
+async def enviar_rango_horarios(respuesta_cliente: str, doctor: int) -> str:
+    dias_a_generar = 5
+    
+    fechas_mostradas = await formatear_fechas_disponibles(dias_a_generar, doctor)
+    
+    if respuesta_cliente.isdigit() and 1 <= int(respuesta_cliente) <= len(fechas_mostradas):
+        fecha_seleccionada = fechas_mostradas[int(respuesta_cliente) - 1]["fecha"]
+        respuesta = f"Has seleccionado la fecha: {format_datetime(fecha_seleccionada, 'EEEE, d \'de\' MMMM \'de\' y', locale='es_ES')}\nElige un rango de horarios:\n{await formatear_rango_horarios(fecha_seleccionada, doctor)}"
+        return respuesta
+        
+    else:
+        respuesta = "Opción no válida. Por favor, elige una opción válida."
+        return respuesta
