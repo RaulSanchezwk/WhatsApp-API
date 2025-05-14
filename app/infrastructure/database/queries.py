@@ -175,3 +175,25 @@ async def horarios_ocupados(doctor: int, fecha: datetime, hora_inicio: time, hor
         logger.exception("❌ Error consultando los horarios disponibles")
         print(e)
         return []
+    
+async def obtener_doctor(wa_id: str) -> int:
+    try:
+        async with connection_context(get_citas_connection) as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("""
+                    SELECT i.doctor 
+                    FROM intencion_agenda i
+                    INNER JOIN contact c ON i.id_contact = c.id_contact
+                    WHERE c.wa_id = %s;
+                """, (wa_id,))
+                
+                result = await cur.fetchone()
+
+                await cur.close()
+
+                return result[0] if result else None
+
+    except Exception as e:
+        logger.exception("❌ Error consultando los horarios disponibles")
+        print(e)
+        return -1

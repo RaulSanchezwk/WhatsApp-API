@@ -6,10 +6,10 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from app.infrastructure.database.connection import init_db_pools
 from app.infrastructure.database.insertions import save_webhook_notification
-from app.config import settings
+from app.core.config import settings
 from app.usecases.message_flow.message_router import manejar_mensaje
-from app.schemas import WebhookPayload
-from app.logging_config import setup_logger
+from app.usecases.message_flow.schemas import WebhookPayload
+from app.core.logging_config import setup_logger
 import tracemalloc
 
 # Se inicializa el rastreo de memoria para ayudar a identificar problemas de memoria.

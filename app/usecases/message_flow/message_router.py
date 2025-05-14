@@ -1,9 +1,10 @@
 from app.infrastructure.whatsapp_client import send_whatsapp_text_message
-from app.infrastructure.database.queries import ya_existe_contacto, obtener_estado, fechas_con_disponibilidad, rangos_con_disponibilidad, horarios_ocupados
+from app.infrastructure.database.queries import ya_existe_contacto, obtener_estado, fechas_con_disponibilidad, rangos_con_disponibilidad, horarios_ocupados, obtener_doctor
 from app.infrastructure.database.updates import cambiar_estado, relacionar_contacto
 from app.infrastructure.database.insertions import save_contact, save_intention
 from datetime import datetime, timedelta
 from babel.dates import format_datetime
+from app.core import constants
 
 async def manejar_mensaje(value: dict, webhook_DB_id: int) -> None:    
     # Aquí se define la función principal que maneja los mensajes entrantes de WhatsApp.
@@ -11,36 +12,35 @@ async def manejar_mensaje(value: dict, webhook_DB_id: int) -> None:
     # y el ID del último webhook que se registró en la base de datos.
 
     wa_id = value["contacts"][0]["wa_id"]
-    doctor = 43692
-    dias_a_generar = 5
+    mensaje_cliente = value["messages"][0]["text"]["body"]
 
     contact = await ya_existe_contacto(wa_id)
     
     if contact:
-        await manejar_cliente_existente(value, webhook_DB_id, contact)
+        await manejar_cliente_existente(value, webhook_DB_id, contact, mensaje_cliente)
         await relacionar_contacto(contact, webhook_DB_id)
         
     else:
-        await enviar_fechas(dias_a_generar, doctor, wa_id)
+        doctor = constants.SUCURSALES[mensaje_cliente]
         id_contact = await save_contact(wa_id, value["messages"][0]["from"], value["contacts"][0]["profile"]["name"], 1)
         await relacionar_contacto(id_contact, webhook_DB_id)
+        id_intention = await save_intention(wa_id, doctor)
+        await enviar_fechas(doctor, wa_id)
 
-async def manejar_cliente_existente(value, webhook_DB_id: int, id_contact: int) -> None:
+async def manejar_cliente_existente(value, webhook_DB_id: int, id_contact: int, mensaje_cliente: str) -> None:
     
     wa_id = value["contacts"][0]["wa_id"]
-    doctor = 43692
+    doctor = obtener_doctor()
 
     estado = await obtener_estado(id_contact)
 
-    respuesta_cliente = value["messages"][0]["text"]["body"]
-
     match estado:
         case 1:
-            await enviar_rango_horarios(respuesta_cliente, doctor, wa_id)
+            await enviar_rango_horarios(mensaje_cliente, doctor, wa_id)
             await cambiar_estado(id_contact, 2)
 
         case 2:
-            await enviar_horarios(respuesta_cliente, doctor, wa_id)
+            await enviar_horarios(mensaje_cliente, doctor, wa_id)
             await cambiar_estado(id_contact, 3)
 
         case None:
@@ -58,12 +58,12 @@ async def manejar_cliente_existente(value, webhook_DB_id: int, id_contact: int) 
 
     #await send_whatsapp_text_message(wa_id, f"Yo te conozco... ¿verdad {profile_name}?")
 
-async def formatear_fechas_disponibles(dias_a_generar: int, doctor: int) -> list:
+async def formatear_fechas_disponibles(doctor: int) -> list:
     
     fecha_inicial = datetime.combine(datetime.today(), datetime.min.time()) + timedelta(days=1) # Se establece la fecha inicial 
                                                                                                 # como mañana a las 00:00
     
-    fecha_final = fecha_inicial + timedelta(days=dias_a_generar) # Se establece la fecha final como la 
+    fecha_final = fecha_inicial + timedelta(days=constants.DIAS_A_GENERAR) # Se establece la fecha final como la 
                                                                  # fecha inicial + el número de días a generar
 
     
@@ -138,8 +138,8 @@ async def formatear_horarios_disponibles(rango_horarios: int, doctor: int, fecha
         print(f"Error al formatear horarios: {e}")
         return str(e)
 
-async def enviar_fechas(dias_a_generar: int, doctor: int, wa_id: str) -> None:
-    fechas_con_espacios = await formatear_fechas_disponibles(dias_a_generar, doctor)
+async def enviar_fechas(doctor: int, wa_id: str) -> None:
+    fechas_con_espacios = await formatear_fechas_disponibles(doctor)
     text = ''
     for i, fecha in enumerate(fechas_con_espacios):
         text += f"{i+1} - {format_datetime(fecha['fecha'], 'EEEE, d \'de\' MMMM \'de\' y', locale='es_ES')}\nEspacios: {28 - fecha['total_citas']}\n\n"
@@ -147,12 +147,9 @@ async def enviar_fechas(dias_a_generar: int, doctor: int, wa_id: str) -> None:
     respuesta_fecha = f"Por favor, elige una fecha:\n{text}"
     await send_whatsapp_text_message(wa_id, respuesta_fecha)
 
-    await save_intention(wa_id, doctor)
-
 async def enviar_rango_horarios(respuesta_cliente: str, doctor: int, wa_id: str) -> None:
-    dias_a_generar = 5
-    
-    fechas_mostradas = await formatear_fechas_disponibles(dias_a_generar, doctor)
+
+    fechas_mostradas = await formatear_fechas_disponibles(doctor)
     
     if respuesta_cliente.isdigit() and 1 <= int(respuesta_cliente) <= len(fechas_mostradas):
         fecha_seleccionada = fechas_mostradas[int(respuesta_cliente) - 1]["fecha"]

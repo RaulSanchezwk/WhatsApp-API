@@ -1,5 +1,5 @@
 import aiomysql
-from app.config import settings
+from app.core.config import settings
 from contextlib import asynccontextmanager
 
 citas_db_pool = None
