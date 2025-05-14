@@ -79,3 +79,30 @@ async def save_contact(wa_id: str, telefono: str, nombre: str, estado: int) -> i
     except (Exception, sql_error) as e:
         logger.exception("❌ Error al guardar contacto")
         print(f"{e}")
+
+async def save_intention(wa_id: int, doctor: int) -> int:
+    try:
+        async with connection_context(get_webhook_connection) as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("""
+                INSERT INTO intencion_agenda(id_contact, doctor)
+                VALUES (
+                    (SELECT id_contact FROM contact WHERE wa_id = %s),
+                    %s
+                );
+                """, (wa_id, doctor))
+
+                await conn.commit()
+                last_row_id = cur.lastrowid
+
+                if last_row_id is not None:
+                    await cur.close()
+                    return last_row_id
+                else:
+                    logger.error("❌ cur.lastrowid is None, returning -1")
+                    await cur.close()
+                    return -1
+
+    except (Exception, sql_error) as e:
+        logger.exception("❌ Error al guardar intención")
+        print(f"{e}")

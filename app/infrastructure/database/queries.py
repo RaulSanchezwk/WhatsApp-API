@@ -46,7 +46,7 @@ async def fechas_con_disponibilidad(fecha_inicio, fecha_fin, doctor: int) -> lis
                                      '17:45:00'
                                      )
                                      GROUP BY fecha
-                                     HAVING total_citas < 29
+                                     HAVING total_citas < 28
                                      ORDER BY fecha;""",
                                      (fecha_inicio, fecha_fin, doctor))
                 result = await cur.fetchall()
@@ -92,31 +92,36 @@ async def rangos_con_disponibilidad(fecha: str, doctor: int) -> list:
         async with connection_context(get_citas_connection) as conn:
             async with conn.cursor() as cur:
                 await cur.execute("""
-                    SELECT DISTINCT
-                        CASE
-                        WHEN HOUR(hora) BETWEEN 9 AND 11 THEN '9:00 am -12:00 pm'
-                        WHEN HOUR(hora) BETWEEN 12 AND 14 THEN '12:00 pm - 3:00 pm'
-                        WHEN HOUR(hora) BETWEEN 15 AND 17 THEN '3:00 pm - 6:00 pm'
-                        END AS rango,
-                        COUNT(DISTINCT hora) AS citas
-                    FROM dmty_citas
-                    WHERE fecha = %s
-                    AND hora BETWEEN '9:00:00' AND '18:00:00'
-                    AND hora NOT IN (
-                        '09:45:00',
-                        '10:45:00',
-                        '11:45:00',
-                        '12:45:00',
-                        '13:45:00',
-                        '14:45:00',
-                        '15:45:00',
-                        '16:45:00',
-                        '17:45:00'
-                    )
-                    AND doctor = %s
-                    GROUP BY rango
-                    HAVING citas < 9
-                    ORDER BY hora;
+                    WITH rangos AS (
+                        SELECT '9:00 am -12:00 pm' AS rango, 9 AS inicio, 11 AS fin
+                        UNION ALL
+                        SELECT '12:00 pm - 3:00 pm', 12, 14
+                        UNION ALL
+                        SELECT '3:00 pm - 6:00 pm', 15, 17
+                    ),
+                    citas_filtradas AS (
+                        SELECT
+                            HOUR(hora) AS hora_h,
+                            hora
+                        FROM dmty_citas
+                        WHERE fecha = %s
+                            AND hora BETWEEN '9:00:00' AND '18:00:00'
+                            AND doctor = %s
+                            AND hora NOT IN (
+                                '09:45:00', '10:45:00', '11:45:00',
+                                '12:45:00', '13:45:00', '14:45:00',
+                                '15:45:00', '16:45:00', '17:45:00'
+                            )
+                        )
+                        SELECT
+                            r.rango,
+                            COUNT(DISTINCT c.hora) AS citas
+                        FROM rangos r
+                        LEFT JOIN citas_filtradas c
+                            ON c.hora_h BETWEEN r.inicio AND r.fin
+                        GROUP BY r.rango
+                        HAVING COUNT(DISTINCT c.hora) < 9
+                        ORDER BY r.inicio;
                 """, (fecha, doctor))
 
                 result = await cur.fetchall()
@@ -145,7 +150,7 @@ async def horarios_ocupados(doctor: int, fecha: datetime, hora_inicio: time, hor
                     FROM dmty_citas
                     WHERE doctor = %s
                     AND fecha = %s
-                    AND hora BETWEEN %s AND %s
+                    AND HOUR(hora) BETWEEN %s AND %s
                     AND hora NOT IN (
                         '09:45:00',
                         '10:45:00',
