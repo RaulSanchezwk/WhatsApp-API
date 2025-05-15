@@ -130,7 +130,8 @@ async def rangos_con_disponibilidad(fecha: str, doctor: int) -> list:
 
                 return [
                     {
-                        "rango": row[0]
+                        "rango": row[0],
+                        "citas": row[1]
                     }
                     for row in result
                 ]
@@ -150,7 +151,7 @@ async def horarios_ocupados(doctor: int, fecha: datetime, hora_inicio: time, hor
                     FROM dmty_citas
                     WHERE doctor = %s
                     AND fecha = %s
-                    AND HOUR(hora) BETWEEN %s AND %s
+                    AND hora BETWEEN %s AND %s
                     AND hora NOT IN (
                         '09:45:00',
                         '10:45:00',
@@ -198,12 +199,12 @@ async def obtener_doctor(wa_id: str) -> int:
         print(e)
         return -1
     
-async def obtener_fecha(wa_id: int) -> int:
+async def obtener_fecha_deseada(wa_id: int) -> int:
     try:
         async with connection_context(get_webhook_connection) as conn:
             async with conn.cursor() as cur:
                 await cur.execute("""
-                    SELECT fecha
+                    SELECT fecha_deseada
                     FROM intencion_agenda
                     WHERE id_contact = (
                         SELECT id_contact

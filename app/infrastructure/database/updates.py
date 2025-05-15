@@ -1,5 +1,5 @@
 from .connection import get_citas_connection, get_webhook_connection, connection_context
-from datetime import datetime
+from datetime import datetime, time
 import logging
 
 logger = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ async def cambiar_estado(id_contact: int, estado: int) -> None:
             
     except Exception as e:
         logger.exception("❌ Error actualizando el estado del webhook")
-        print(f"{e}")
+        print(e)
     
 async def relacionar_contacto(id_contact: str, webhook_DB_id: int) -> None:
     try:
@@ -36,7 +36,7 @@ async def relacionar_contacto(id_contact: str, webhook_DB_id: int) -> None:
             
     except Exception as e:
         logger.exception("❌ Error actualizando el estado del webhook")
-        print(f"{e}")
+        print(e)
 
 async def agregar_fecha_deseada(fecha: datetime, wa_id: int) -> None:
     try:
@@ -58,4 +58,25 @@ async def agregar_fecha_deseada(fecha: datetime, wa_id: int) -> None:
     
     except Exception as e:
         logger.exception("❌ Error agregando fecha deseada")
-        print(f"{e}")
+        print(e)
+
+async def agregar_rango_horarios(rango_horarios: str, wa_id: int) -> None:
+    try:
+        async with connection_context(get_webhook_connection) as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("""
+                    UPDATE intencion_agenda
+                    SET rango = %s
+                    WHERE id_contact = (
+                        SELECT id_contact
+                        FROM contact
+                        WHERE wa_id = %s
+                    )
+                """, (rango_horarios, wa_id))
+
+                await conn.commit()
+                await cur.close()
+
+    except Exception as e:
+        logger.exception("❌ Error agregando rango de horarios")
+        print(e)

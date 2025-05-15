@@ -1,12 +1,12 @@
 from app.infrastructure.whatsapp_client import send_whatsapp_text_message
-from app.infrastructure.database.queries import ya_existe_contacto, obtener_estado, fechas_con_disponibilidad, rangos_con_disponibilidad, horarios_ocupados, obtener_doctor, obtener_fecha
-from app.infrastructure.database.updates import cambiar_estado, relacionar_contacto, agregar_fecha_deseada
+from app.infrastructure.database.queries import ya_existe_contacto, obtener_estado, fechas_con_disponibilidad, rangos_con_disponibilidad, horarios_ocupados, obtener_doctor, obtener_fecha_deseada
+from app.infrastructure.database.updates import cambiar_estado, relacionar_contacto, agregar_fecha_deseada, agregar_rango_horarios
 from app.infrastructure.database.insertions import save_contact, save_intention
 from datetime import datetime, timedelta
 from babel.dates import format_datetime
 from app.core import constants
 
-async def manejar_mensaje(value: dict, webhook_DB_id: int) -> None:    
+async def manejar_mensaje(value: dict, webhook_DB_id: int) -> None:
     # Aquí se define la función principal que maneja los mensajes entrantes de WhatsApp.
     # La función recibe el value del webhook 
     # y el ID del último webhook que se registró en la base de datos.
@@ -28,7 +28,14 @@ async def manejar_mensaje(value: dict, webhook_DB_id: int) -> None:
         await relacionar_contacto(id_contact, webhook_DB_id)
 
         mensaje_cliente = value["messages"][0]["text"]["body"]
-        doctor = constants.SUCURSALES[mensaje_cliente]
+        if not (mensaje_cliente.isdigit()):
+            await send_whatsapp_text_message(wa_id, "Opción no válida. Por favor, elige una opción válida.")
+            return
+        if not (1 <= int(mensaje_cliente) <= len(constants.SUCURSALES)):
+            await send_whatsapp_text_message(wa_id, "Opción no válida. Por favor, elige una opción válida.")
+            return
+            
+        doctor = constants.SUCURSALES[int(mensaje_cliente)]["ID DOCTOR"]
         id_intention = await save_intention(wa_id, doctor)
 
         respuesta = await enviar_fechas(doctor, wa_id)
@@ -99,21 +106,28 @@ async def formatear_rango_horarios(fecha: str, doctor: int) -> list:
     finally:
         return rangos_con_espacios
 
-async def formatear_horarios_disponibles(rango_horarios: int, doctor: int, fecha: datetime) -> list:
+async def formatear_horarios_disponibles(rango_horarios: str, doctor: int, fecha: datetime) -> list:
     try: 
         parametros_horarios = obtener_parametros_horarios(rango_horarios)
 
         hora_inicio = parametros_horarios["Hora inicial"]
         hora_fin = parametros_horarios["Hora final"]
         todos_los_horarios = parametros_horarios["Todos los Horarios"]
+        print(f"Todas las horas: {todos_los_horarios}")
 
         horas_ocupadas = await horarios_ocupados(doctor, fecha, hora_inicio, hora_fin)
+        horas_ocupadas = [((datetime.min + hora).time() if isinstance(hora, timedelta) else hora) for hora in horas_ocupadas]
+        print(f"Horas ocupadas: {horas_ocupadas}")
+
         horarios_disponibles = list(set(todos_los_horarios) - set(horas_ocupadas))
+        print(f"Horas disponibles: {horarios_disponibles}")
 
         horarios_disponibles = sorted(horarios_disponibles)
+        print(f"Horas disponibles ordenados: {horarios_disponibles}")
+
 
     except Exception as e:
-        print(f"Error al formatear el rango de horarios: {e}")        
+        print(f"Error al formatear horarios disponibles: {e}")        
         horarios_disponibles = []
 
     finally:
@@ -126,7 +140,7 @@ async def enviar_fechas(doctor: int, wa_id: str) -> str:
 
     text = ''
     for i, fecha in enumerate(fechas_con_espacios):
-        text += f"{i+1} - {format_datetime(fecha['fecha'], 'EEEE, d \'de\' MMMM \'de\' y', locale='es_ES')}\nEspacios: {28 - fecha['total_citas']}\n\n"
+        text += f"{i+1} - {format_datetime(fecha['fecha'], 'EEEE, d \'de\' MMMM \'de\' y', locale='es_ES')}\nEspacios: {28 - fecha['total_citas']} ({fecha['total_citas']}))\n\n"
     
     respuesta = f"Tu doctor es: {doctor}\n"
     respuesta += f"Por favor, elige una fecha:\n{text}"
@@ -143,7 +157,9 @@ async def enviar_rango_horarios(respuesta_cliente: str, wa_id: str) -> str:
     if not fechas_mostradas:
         return "No se encontraron fechas mostradas"
     
-    if not (respuesta_cliente.isdigit()) or not (1 <= int(respuesta_cliente) <= len(fechas_mostradas)):
+    if not (respuesta_cliente.isdigit()):
+        return "Opción no válida. Por favor, elige una opción válida."
+    if not (1 <= int(respuesta_cliente) <= len(fechas_mostradas)):
         return "Opción no válida. Por favor, elige una opción válida."
     
     fecha_seleccionada = fechas_mostradas[int(respuesta_cliente) - 1]["fecha"]
@@ -158,14 +174,14 @@ async def enviar_rango_horarios(respuesta_cliente: str, wa_id: str) -> str:
     respuesta += f"Has seleccionado la fecha: {format_datetime(fecha_seleccionada, 'EEEE, d \'de\' MMMM \'de\' y', locale='es_ES')}\n\n"
 
     respuesta += f"Elige un rango de horarios:\n"
-    for rango in rango_horarios:
-        respuesta += rango
+    for i, rango in enumerate(rango_horarios):
+        respuesta += f"{i+1} - {rango["rango"]}\nEspacios: {9 - rango["citas"]}\n\n"
 
     return respuesta
     
 async def enviar_horarios(respuesta_cliente: str, wa_id: str) -> str:
-    
-    fecha = await obtener_fecha(wa_id)
+
+    fecha = await obtener_fecha_deseada(wa_id)
     if not fecha:
         return "No se encontró la fecha"
 
@@ -177,38 +193,47 @@ async def enviar_horarios(respuesta_cliente: str, wa_id: str) -> str:
     if not rangos_mostrados:
         return "No se encontraron los rangos mostrados"
 
-    if not (respuesta_cliente.isdigit()) or not (1 <= int(respuesta_cliente) <= len(rangos_mostrados)):
+    if not (respuesta_cliente.isdigit()):
         return "Opción no válida. Por favor, elige una opción válida."
+    if not (1 <= int(respuesta_cliente) <= len(rangos_mostrados)):
+        return "Opción no válida. Por favor, elige una opción válida."
+    
+    rango_horarios = rangos_mostrados[int(respuesta_cliente) - 1]["rango"]
 
-    horarios_disponibles = await formatear_horarios_disponibles(int(respuesta_cliente), doctor, fecha)
+    await agregar_rango_horarios(rango_horarios, wa_id)
+
+    horarios_disponibles = await formatear_horarios_disponibles(rango_horarios, doctor, fecha)
     if not horarios_disponibles:
         return "No se encontraron horarios disponibles"
 
     respuesta = f"Tu doctor es: {doctor}\n"
     respuesta += f"Has seleccionado la fecha: {format_datetime(fecha, 'EEEE, d \'de\' MMMM \'de\' y', locale='es_ES')}\n"
-    respuesta += f"Has seleccionado el rango: {rangos_mostrados}\n\n"
+    respuesta += f"Has seleccionado el rango: {rangos_mostrados[int(respuesta_cliente) - 1]}\n\n"
 
     respuesta += f"Elige un horario:\n"
 
     for i, horario in enumerate(horarios_disponibles):
-            respuesta += f"{i+1} - {horario}\n"
+        respuesta += f"{i+1} - {horario.strftime('%I:%M %p').lstrip('0').lower()}\n"
 
     return respuesta
 
-def obtener_parametros_horarios(rango_horarios: int) -> dict:
+async def enviar_confirmacion() -> str:
+    resultado = "Esta es la confirmación de tu cita"
+    return resultado
 
-    if rango_horarios == 1:
+def obtener_parametros_horarios(rango_horarios: str) -> dict:
+
+    if rango_horarios == "9:00 am - 12:00 pm":
         hora_inicio = datetime.strptime("09:00", "%H:%M").time()
         hora_fin = datetime.strptime("11:59", "%H:%M").time()
 
-    elif rango_horarios == 2:
+    elif rango_horarios == "12:00 pm - 3:00 pm":
         hora_inicio = datetime.strptime("12:00", "%H:%M").time()
         hora_fin = datetime.strptime("14:59", "%H:%M").time()
 
-    elif rango_horarios == 3:
+    elif rango_horarios == "3:00 pm - 6:00 pm":
         hora_inicio = datetime.strptime("15:00", "%H:%M").time()
         hora_fin = datetime.strptime("17:59", "%H:%M").time()
-
 
     intervalo = timedelta(minutes=15) # Sólo se pueden agendar citas cada 15 minutos desde redes sociales
     todos_los_horarios = []
@@ -219,7 +244,7 @@ def obtener_parametros_horarios(rango_horarios: int) -> dict:
         # Es decir, la última cita se puede agendar a las {hora}:30
         # (1:30, 2:30, 3:30, 4:30...)
         if hora_actual.minute < 45:
-            todos_los_horarios.append(hora_actual.strftime("%H:%M"))
+            todos_los_horarios.append(hora_actual.time())
 
         hora_actual += intervalo
     
