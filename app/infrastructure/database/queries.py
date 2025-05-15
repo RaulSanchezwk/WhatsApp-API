@@ -178,7 +178,7 @@ async def horarios_ocupados(doctor: int, fecha: datetime, hora_inicio: time, hor
     
 async def obtener_doctor(wa_id: str) -> int:
     try:
-        async with connection_context(get_citas_connection) as conn:
+        async with connection_context(get_webhook_connection) as conn:
             async with conn.cursor() as cur:
                 await cur.execute("""
                     SELECT i.doctor 
@@ -194,6 +194,30 @@ async def obtener_doctor(wa_id: str) -> int:
                 return result[0] if result else None
 
     except Exception as e:
-        logger.exception("❌ Error consultando los horarios disponibles")
+        logger.exception("❌ Error consultando el ID del doctor")
         print(e)
         return -1
+    
+async def obtener_fecha(wa_id: int) -> int:
+    try:
+        async with connection_context(get_webhook_connection) as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("""
+                    SELECT fecha
+                    FROM intencion_agenda
+                    WHERE id_contact = (
+                        SELECT id_contact
+                        FROM contact
+                        WHERE wa_id = %s
+                    );
+                """, (wa_id,))
+
+                result = await cur.fetchone()
+
+                await cur.close()
+
+                return result[0] if result else None
+    
+    except Exception as e:
+        logger.exception("❌ Error consultando la fecha deseada")
+        print(e)
