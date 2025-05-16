@@ -7,14 +7,11 @@ async def get_fechas_disponibles(doctor: int) -> list:
     fecha_inicial = datetime.combine(datetime.today(), datetime.min.time()) + timedelta(days=1) # Se establece la fecha inicial 
                                                                                                 # como mañana a las 00:00
     
-    fecha_final = fecha_inicial + timedelta(days=constants.DIAS_A_GENERAR + 5) # Se establece la fecha final como la 
+    fecha_final = fecha_inicial + timedelta(days=constants.DIAS_A_GENERAR) # Se establece la fecha final como la 
                                                                            # fecha inicial + el número de días a generar
-                                                                           # + 5 para asegurar un rango completo
-
     
     try:
-        # Aquí se hace la consulta y se limita el número de días a el número de días a generar
-        fechas_con_espacios = await queries.fechas_con_disponibilidad(fecha_inicial, fecha_final, doctor)[:constants.DIAS_A_GENERAR - 1]
+        fechas_con_espacios = await queries.fechas_con_disponibilidad(fecha_inicial, fecha_final, doctor)
         
     except Exception as e:
         print(f"Error al obtener fechas: {e}")

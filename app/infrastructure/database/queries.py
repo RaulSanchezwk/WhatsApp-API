@@ -75,6 +75,8 @@ async def fechas_con_disponibilidad(fecha_inicio, fecha_fin, doctor: int) -> lis
 
                 await cur.close()
 
+                print(f"\n\n{result}\n\n")
+
                 return [
                     {
                         "fecha": row[0],
@@ -94,7 +96,7 @@ async def rangos_con_disponibilidad(fecha: str, doctor: int) -> list:
             async with conn.cursor() as cur:
                 await cur.execute("""
                     WITH rangos AS (
-                        SELECT '9:00 am -12:00 pm' AS rango, 9 AS inicio, 11 AS fin
+                        SELECT '9:00 am - 12:00 pm' AS rango, 9 AS inicio, 11 AS fin
                         UNION ALL
                         SELECT '12:00 pm - 3:00 pm', 12, 14
                         UNION ALL

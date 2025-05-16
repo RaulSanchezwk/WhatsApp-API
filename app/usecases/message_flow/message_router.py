@@ -99,7 +99,7 @@ async def enviar_fechas(respuesta_cliente: str, wa_id: str) -> str:
     respuesta = f"Por favor, elige una fecha:\n\n"
 
     for i, fecha in enumerate(fechas_con_espacios):
-        respuesta += f"{i+1} - {format_datetime(fecha['fecha'], 'EEEE, d \'de\' MMMM \'de\' y', locale='es_ES')}\nEspacios: {28 - fecha['total_citas']}\n\n"
+        respuesta += f"{i+1} - {format_datetime(fecha['fecha'], 'EEEE, d \'de\' MMMM \'de\' y', locale='es_ES')}\nEspacios: {28 - fecha['total_citas']} {fecha['total_citas']}\n\n"
     
     return respuesta
 
@@ -129,7 +129,7 @@ async def enviar_rango_horarios(respuesta_cliente: str, wa_id: str) -> str:
     respuesta = f"Elige un rango de horarios:\n\n"
 
     for i, rango in enumerate(rango_horarios):
-        respuesta += f"{i+1} - {rango["rango"]}\nEspacios: {9 - rango["citas"]}\n\n"
+        respuesta += f"{i+1} - {rango["rango"]}\nEspacios: {9 - rango["citas"]} {rango["citas"]}\n\n"
 
     return respuesta
     
