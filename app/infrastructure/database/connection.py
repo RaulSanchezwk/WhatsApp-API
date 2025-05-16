@@ -19,6 +19,7 @@ async def init_db_pools():
         db=settings.CITAS_DB_NAME,
         minsize=1,
         maxsize=5,
+        charset='utf8mb4',
     )
 
     webhook_db_pool = await aiomysql.create_pool(
@@ -29,6 +30,7 @@ async def init_db_pools():
         db=settings.WEBHOOK_DB_NAME,
         minsize=1,
         maxsize=5,
+        charset='utf8mb4',
     )
 
 # Se definen dos funciones asincrónicas que permiten obtener conexiones a las bases de datos de citas y
