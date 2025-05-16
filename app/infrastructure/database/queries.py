@@ -25,6 +25,27 @@ async def ya_existe_contacto(wa_id: str) -> int:
         print(e)
         return None
 
+async def obtener_estado(id_contact: int) -> int:
+    try:
+        async with connection_context(get_webhook_connection) as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("""
+                    SELECT estado
+                    FROM contact
+                    WHERE id_contact = %s;
+                """, (id_contact,))
+
+                result = await cur.fetchone()
+
+                await cur.close()
+
+                return result[0] if result else None
+            
+    except Exception as e:
+        logger.exception("❌ Error consultando el estado")
+        print(e)
+        return -1
+
 async def fechas_con_disponibilidad(fecha_inicio, fecha_fin, doctor: int) -> list:
     try:
         async with connection_context(get_citas_connection) as conn:
@@ -64,27 +85,6 @@ async def fechas_con_disponibilidad(fecha_inicio, fecha_fin, doctor: int) -> lis
         logger.exception("❌ Error consultando las fechas")
         print(e)
         return []
-
-async def obtener_estado(id_contact: int) -> int:
-    try:
-        async with connection_context(get_webhook_connection) as conn:
-            async with conn.cursor() as cur:
-                await cur.execute("""
-                    SELECT estado
-                    FROM contact
-                    WHERE id_contact = %s;
-                """, (id_contact,))
-
-                result = await cur.fetchone()
-
-                await cur.close()
-
-                return result[0] if result else None
-            
-    except Exception as e:
-        logger.exception("❌ Error consultando el estado")
-        print(e)
-        return -1
     
 async def rangos_con_disponibilidad(fecha: str, doctor: int) -> list:
 
@@ -221,4 +221,28 @@ async def obtener_fecha_deseada(wa_id: int) -> int:
     
     except Exception as e:
         logger.exception("❌ Error consultando la fecha deseada")
+        print(e)
+
+async def obtener_rango_horarios(wa_id: int) -> str:
+    try:
+        async with connection_context(get_webhook_connection) as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("""
+                    SELECT rango
+                    FROM intencion_agenda
+                    WHERE id_contact = (
+                        SELECT id_contact
+                        FROM contact
+                        WHERE wa_id = %s
+                    );
+                """, (wa_id,))
+
+                result = await cur.fetchone()
+
+                await cur.close()
+
+                return result[0] if result else None
+    
+    except Exception as e:
+        logger.exception("❌ Error consultando el rango de horarios")
         print(e)
