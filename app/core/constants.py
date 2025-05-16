@@ -37,3 +37,5 @@ SUCURSALES = {
         "NOMBRE DOCTOR": "GILBERTO"
         }
 }
+
+CAMPOS_PERMITIDOS = {"doctor", "fecha_deseada", "rango", "horario"}

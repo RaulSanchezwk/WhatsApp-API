@@ -4,6 +4,7 @@ from .connection import get_webhook_connection, connection_context
 import json
 import logging
 from aiomysql import Error as sql_error
+from app.infrastructure.database import queries
 
 logger = logging.getLogger(__name__)
 
@@ -104,4 +105,41 @@ async def save_intention(wa_id: int) -> int:
 
     except (Exception, sql_error) as e:
         logger.exception("❌ Error al guardar intención")
+        print(f"{e}")
+
+async def save_intention_history(wa_id: int, webhook: int, campo: str, valor_nuevo: str):
+    try:
+        valor_anterior = await queries.obtener_de_intencion(campo, wa_id)
+
+        async with connection_context(get_webhook_connection) as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("""
+                INSERT INTO intencion_agenda_historial (
+                    id_intencion,
+                    id_webhook,
+                    campo_modificado,
+                    valor_anterior,
+                    valor_nuevo         
+                )
+                VALUES (
+                    (SELECT id_intencion
+                    FROM intencion_agenda i
+                    INNER JOIN contact c ON i.id_contact = c.id_contact
+                    WHERE wa_id = %s),
+                    %s, %s, %s, %s);
+                """, (wa_id, webhook, campo, valor_anterior, valor_nuevo))
+
+                await conn.commit()
+                last_row_id = cur.lastrowid
+
+                if last_row_id is not None:
+                    await cur.close()
+                    return last_row_id
+                else:
+                    logger.error("❌ cur.lastrowid is None, returning -1")
+                    await cur.close()
+                    return -1
+
+    except (Exception, sql_error) as e:
+        logger.exception("❌ Error al guardar historial de la intención")
         print(f"{e}")

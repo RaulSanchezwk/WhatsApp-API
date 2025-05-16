@@ -1,5 +1,6 @@
 from .connection import get_citas_connection, get_webhook_connection, connection_context
 from datetime import datetime, time
+from app.core import constants
 import logging
 
 logger = logging.getLogger(__name__)
@@ -177,16 +178,19 @@ async def horarios_ocupados(doctor: int, fecha: datetime, hora_inicio: time, hor
         print(e)
         return []
     
-async def obtener_doctor(wa_id: str) -> int:
+async def obtener_de_intencion(campo: str, wa_id: str):
     try:
+        if campo not in constants.CAMPOS_PERMITIDOS:
+            raise ValueError("Campo no permitido")
+
         async with connection_context(get_webhook_connection) as conn:
             async with conn.cursor() as cur:
-                await cur.execute("""
-                    SELECT i.doctor 
+                await cur.execute(f"""
+                    SELECT i.{campo}
                     FROM intencion_agenda i
                     INNER JOIN contact c ON i.id_contact = c.id_contact
                     WHERE c.wa_id = %s;
-                """, (wa_id,))
+                """, (wa_id, ))
                 
                 result = await cur.fetchone()
 
@@ -195,54 +199,6 @@ async def obtener_doctor(wa_id: str) -> int:
                 return result[0] if result else None
 
     except Exception as e:
-        logger.exception("❌ Error consultando el ID del doctor")
+        logger.exception(f"❌ Error consultando de intencion_agenda ({campo})")
         print(e)
         return -1
-    
-async def obtener_fecha_deseada(wa_id: int) -> int:
-    try:
-        async with connection_context(get_webhook_connection) as conn:
-            async with conn.cursor() as cur:
-                await cur.execute("""
-                    SELECT fecha_deseada
-                    FROM intencion_agenda
-                    WHERE id_contact = (
-                        SELECT id_contact
-                        FROM contact
-                        WHERE wa_id = %s
-                    );
-                """, (wa_id,))
-
-                result = await cur.fetchone()
-
-                await cur.close()
-
-                return result[0] if result else None
-    
-    except Exception as e:
-        logger.exception("❌ Error consultando la fecha deseada")
-        print(e)
-
-async def obtener_rango_horarios(wa_id: int) -> str:
-    try:
-        async with connection_context(get_webhook_connection) as conn:
-            async with conn.cursor() as cur:
-                await cur.execute("""
-                    SELECT rango
-                    FROM intencion_agenda
-                    WHERE id_contact = (
-                        SELECT id_contact
-                        FROM contact
-                        WHERE wa_id = %s
-                    );
-                """, (wa_id,))
-
-                result = await cur.fetchone()
-
-                await cur.close()
-
-                return result[0] if result else None
-    
-    except Exception as e:
-        logger.exception("❌ Error consultando el rango de horarios")
-        print(e)

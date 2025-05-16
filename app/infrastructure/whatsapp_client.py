@@ -2,7 +2,7 @@ import httpx
 from app.core.config import settings
 
 async def send_whatsapp_text_message(recipient_id: str, message: str):
-    url = f"https://graph.facebook.com/v18.0/{settings.PHONE_NUMBER_ID}/messages"
+    url = f"https://graph.facebook.com/v22.0/{settings.PHONE_NUMBER_ID}/messages"
     headers = {
         "Authorization": f"Bearer {settings.ACCESS_TOKEN}",
         "Content-Type": "application/json"

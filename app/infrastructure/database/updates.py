@@ -28,7 +28,7 @@ async def relacionar_contacto(id_contact: str, webhook_DB_id: int) -> None:
                 await cur.execute("""
                     UPDATE webhook_notification
                     SET id_contact = %s
-                    WHERE id_notification = %s
+                    WHERE id_webhook = %s
                 """, (id_contact, webhook_DB_id))
 
                 await conn.commit()
