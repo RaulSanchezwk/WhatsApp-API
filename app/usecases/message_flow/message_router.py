@@ -152,7 +152,7 @@ async def enviar_fechas(respuesta_cliente: str, wa_id: str) -> str:
 
     text = ''
     for i, fecha in enumerate(fechas_con_espacios):
-        text += f"{i+1} - {format_datetime(fecha['fecha'], 'EEEE, d \'de\' MMMM \'de\' y', locale='es_ES')}\nEspacios: {28 - fecha['total_citas']} ({fecha['total_citas']}))\n\n"
+        text += f"{i+1} - {format_datetime(fecha['fecha'], 'EEEE, d \'de\' MMMM \'de\' y', locale='es_ES')}\nEspacios: {28 - fecha['total_citas']}\n\n"
     
     respuesta = f"Por favor, elige una fecha:\n\n{text}"
     
@@ -250,8 +250,11 @@ async def enviar_confirmacion(respuesta_cliente: str, wa_id: int) -> str:
 
     respuesta = f"""
 !Tu cita quedó agendada! 😁
+
 📅 Para el día: {format_datetime(fecha, 'EEEE, d \'de\' MMMM \'de\' y', locale='es_ES')}
+
 📍 En la sucursal: {obtener_nombre_sucursal_por_doctor(doctor)}
+
 🕐 A las: {hora_seleccionada.strftime('%I:%M %p').lstrip('0').lower()}
 """
     
