@@ -39,3 +39,4 @@ SUCURSALES = {
 }
 
 CAMPOS_PERMITIDOS = {"doctor", "fecha_deseada", "rango", "horario"}
+

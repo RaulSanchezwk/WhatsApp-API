@@ -57,14 +57,14 @@ async def save_webhook_notification(data: dict, ip: str, user_agent: str) -> int
         # se retorna -1 en caso de error para poder manejar el error después en el código
         return -1
 
-async def save_contact(wa_id: str, telefono: str, nombre: str, estado: int) -> int:
+async def save_contact(wa_id: str, contact_name: str, state: int) -> int:
     try:
         async with connection_context(get_webhook_connection) as conn:
             async with conn.cursor() as cur:
                 await cur.execute("""
-                    INSERT INTO contact (wa_id, display_phone_number, contact_name, estado)
-                    VALUES (%s, %s, %s, %s)
-                """, (wa_id, telefono, nombre, estado))
+                    INSERT INTO contact (wa_id, contact_name, estado)
+                    VALUES (%s, %s, %s)
+                """, (wa_id, contact_name, state))
 
                 await conn.commit()
                 last_row_id = cur.lastrowid
@@ -107,9 +107,9 @@ async def save_intention(wa_id: int) -> int:
         logger.exception("❌ Error al guardar intención")
         print(f"{e}")
 
-async def save_intention_history(wa_id: int, webhook: int, campo: str, valor_nuevo: str):
+async def save_intention_history(wa_id: int, webhook: int, field: str, new_value: str):
     try:
-        valor_anterior = await queries.obtener_de_intencion(campo, wa_id)
+        old_value = await queries.obtener_de_intencion(field, wa_id)
 
         async with connection_context(get_webhook_connection) as conn:
             async with conn.cursor() as cur:
@@ -127,7 +127,7 @@ async def save_intention_history(wa_id: int, webhook: int, campo: str, valor_nue
                     INNER JOIN contact c ON i.id_contact = c.id_contact
                     WHERE wa_id = %s),
                     %s, %s, %s, %s);
-                """, (wa_id, webhook, campo, valor_anterior, valor_nuevo))
+                """, (wa_id, webhook, field, old_value, new_value))
 
                 await conn.commit()
                 last_row_id = cur.lastrowid

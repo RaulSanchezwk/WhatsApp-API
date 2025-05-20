@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from app.infrastructure.database.connection import init_db_pools
 from app.infrastructure.database.insertions import save_webhook_notification
 from app.core.config import settings
-from app.usecases.message_flow.message_router import manejar_mensaje
+from app.usecases.message_flow.message_router import router
 from app.usecases.message_flow.schemas import WebhookPayload
 from app.core.logging_config import setup_logger
 import tracemalloc
@@ -61,8 +61,7 @@ async def receive_webhook(request: Request):
     value = data["entry"][0]["changes"][0]["value"]
 
     # Se verifica si el mensaje o el estado están presentes en la notificación.
-    mensaje = value.get("messages") != None
-    status = value.get("statuses") != None
+    
     
     print(f"\nWebhook recibido: {data}\n")
 
@@ -80,7 +79,7 @@ async def receive_webhook(request: Request):
 
             # Se extraen el ID de WhatsApp y el ID del número de teléfono del mensaje.
             # Estos IDs son necesarios para enviar mensajes de respuesta a través de la API de WhatsApp.
-            await manejar_mensaje(value, last_row_id)
+            await router(data, last_row_id)
 
     elif status:
         await manejar_status(value)

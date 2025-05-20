@@ -5,7 +5,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-async def ya_existe_contacto(wa_id: str) -> int:
+async def contact_exists(wa_id: str) -> int:
 
     try:
         async with connection_context(get_webhook_connection) as conn:
@@ -26,7 +26,7 @@ async def ya_existe_contacto(wa_id: str) -> int:
         print(e)
         return None
 
-async def obtener_estado(id_contact: int) -> int:
+async def get_step(id_contact: int) -> str:
     try:
         async with connection_context(get_webhook_connection) as conn:
             async with conn.cursor() as cur:
