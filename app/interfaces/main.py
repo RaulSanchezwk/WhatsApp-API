@@ -7,9 +7,9 @@ from contextlib import asynccontextmanager
 from app.infrastructure.database.connection import init_db_pools
 from app.infrastructure.database.insertions import save_webhook_notification
 from app.core.config import settings
-from app.usecases.message_flow.message_router import router
-from app.usecases.message_flow.schemas import WebhookPayload
+from app.usecases.message_flow.message_router import MessageRouter
 from app.core.logging_config import setup_logger
+from app.usecases.webhook_processor import WebhookProcessor, FlattenedData
 import tracemalloc
 
 # Se inicializa el rastreo de memoria para ayudar a identificar problemas de memoria.
@@ -57,17 +57,16 @@ def verify_webhook(
 async def receive_webhook(request: Request):
     data = await request.json()
 
-
     value = data["entry"][0]["changes"][0]["value"]
-
-    # Se verifica si el mensaje o el estado están presentes en la notificación.
-    
     
     print(f"\nWebhook recibido: {data}\n")
-
+    
+    message = value.get("messages") != None
+    status = value.get("statuses") != None
+    
     # Guardar la notificación del webhook en la base de datos
     # y obtener el ID de la fila insertada.
-    if mensaje:
+    if message:
         numeros_permitidos = ['5218135745910', '5218123302217', '5218144883499', '5218116965030', '5218129133326', '5218119043177', '5218182803998', '5218110444217', '5218131240968', '5218182808236']
         wa_id = value["contacts"][0]["wa_id"]
         if wa_id in numeros_permitidos:
@@ -79,16 +78,16 @@ async def receive_webhook(request: Request):
 
             # Se extraen el ID de WhatsApp y el ID del número de teléfono del mensaje.
             # Estos IDs son necesarios para enviar mensajes de respuesta a través de la API de WhatsApp.
-            await router(data, last_row_id)
+            await MessageRouter(data, last_row_id)
 
     elif status:
         await manejar_status(value)
 
     else:
-        print(f"⚠️ Tipo de webhook no reconocido: {mensaje}")
+        print(f"⚠️ Tipo de webhook no reconocido: {value}")
 
     return JSONResponse(content={"status": "ok"}, status_code=200)
 
 
-async def manejar_status(value):
+async def manejar_status(value: dict):
     pass

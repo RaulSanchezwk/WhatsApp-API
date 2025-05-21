@@ -1,4 +1,4 @@
-from app.usecases.message_flow.schemas import WebhookPayload
+from app.usecases.schemas import WebhookPayload
 from datetime import datetime
 from pydantic import BaseModel
 from typing import Optional

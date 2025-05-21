@@ -1,7 +1,7 @@
 from app.usecases.webhook_processor import WebhookProcessor
 from app.usecases.message_flow.steps.steps_factory import ConversationStepsFactory
-from app.infrastructure.database import insertions, queries, updates
-from app.core import constants
+from app.usecases.message_flow.steps.steps_interface import ConversationStep
+from app.infrastructure.database import insertions, queries
 
 class MessageRouter:
     async def __init__(self, data: dict, webhook_DB_id: int) -> None:
@@ -16,14 +16,14 @@ class MessageRouter:
         else:
             self.handle_new_contact("sucursales")
 
-    def handle_new_contact(self, step: str):
+    async def handle_new_contact(self, step: str):
 
         insertions.save_contact(self.webhook_data.wa_id, 
                                 self.webhook_data.profile_name,
                                 0)
         
-        step = ConversationStepsFactory().get_step(step)
-        step.handle()
+        await step = ConversationStepsFactory().get_step(step)
+        await step.handle()
 
     def handle_existing_contact(self, id_contact: int):
         step = queries.get_step(id_contact)
