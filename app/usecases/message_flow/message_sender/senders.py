@@ -8,7 +8,7 @@ factory = MessageSenderFactory()
 class WhatsAppMessageSender(MessageSender):
     async def send_message(self, id: str):
         try:
-            await send_whatsapp_text_message(id, self.client_message)
+            await send_whatsapp_text_message(id, self.message)
 
         except Exception as e:
             print(f"Error al enviar mensaje desde WhatsApp: {e}")

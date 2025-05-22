@@ -1,39 +1,40 @@
 from datetime import datetime, timedelta
 from app.core import constants
 from app.infrastructure.database import queries
+from app.domain.entities import Branch
 
-async def get_fechas_disponibles(doctor: int) -> list:
+async def available_dates(doctor: int) -> list:
     
     fecha_inicial = datetime.combine(datetime.today(), datetime.min.time()) + timedelta(days=1) # Se establece la fecha inicial 
                                                                                                 # como mañana a las 00:00
     
-    fecha_final = fecha_inicial + timedelta(days=constants.DIAS_A_GENERAR) # Se establece la fecha final como la 
+    fecha_final = fecha_inicial + timedelta(days=constants.DAYS_TO_SHOW) # Se establece la fecha final como la 
                                                                            # fecha inicial + el número de días a generar
     
     try:
-        fechas_con_espacios = await queries.fechas_con_disponibilidad(fecha_inicial, fecha_final, doctor)
+        fechas_con_espacios = await queries.get_available_dates(fecha_inicial, fecha_final, doctor)
         
     except Exception as e:
-        print(f"Error al obtener fechas: {e}")
+        print(f"Error at available_dates: {e}")
         fechas_con_espacios = []
     
     finally:
         return fechas_con_espacios
 
-async def get_rango_horarios(fecha: str, doctor: int) -> list:
+async def available_hours_ranges(fecha: str, doctor: int) -> list:
     try:
-        rangos_con_espacios = await queries.rangos_con_disponibilidad(fecha, doctor)
+        rangos_con_espacios = await queries.get_available_ranges(fecha, doctor)
 
     except Exception as e:
-        print(f"Error al formatear el rango de horarios: {e}")        
+        print(f"Error at available_hours_ranges: {e}")        
         rangos_con_espacios = []
 
     finally:
         return rangos_con_espacios
 
-async def get_horarios_disponibles(rango_horarios: str, doctor: int, fecha: datetime) -> list:
+async def available_hours(rango_horarios: str, doctor: int, fecha: datetime) -> list:
     try: 
-        parametros_horarios = obtener_parametros_horarios(rango_horarios)
+        parametros_horarios = build_available_hour_context(rango_horarios)
 
         hora_inicio = parametros_horarios["Hora inicial"]
         hora_fin = parametros_horarios["Hora final"]
@@ -47,47 +48,47 @@ async def get_horarios_disponibles(rango_horarios: str, doctor: int, fecha: date
         horarios_disponibles = sorted(horarios_disponibles)
 
     except Exception as e:
-        print(f"Error al formatear horarios disponibles: {e}")        
+        print(f"Error at available_hours: {e}")        
         horarios_disponibles = []
 
     finally:
         return horarios_disponibles
 
-def obtener_parametros_horarios(rango_horarios: str) -> dict:
+def build_available_hour_context(hours_range: str) -> dict:
 
-    if rango_horarios == "9:00 am - 12:00 pm":
-        hora_inicio = datetime.strptime("09:00", "%H:%M").time()
-        hora_fin = datetime.strptime("11:59", "%H:%M").time()
+    if hours_range == "9:00 am - 12:00 pm":
+        start_hour = datetime.strptime("09:00", "%H:%M").time()
+        end_hour = datetime.strptime("11:59", "%H:%M").time()
 
-    elif rango_horarios == "12:00 pm - 3:00 pm":
-        hora_inicio = datetime.strptime("12:00", "%H:%M").time()
-        hora_fin = datetime.strptime("14:59", "%H:%M").time()
+    elif hours_range == "12:00 pm - 3:00 pm":
+        start_hour = datetime.strptime("12:00", "%H:%M").time()
+        end_hour = datetime.strptime("14:59", "%H:%M").time()
 
-    elif rango_horarios == "3:00 pm - 6:00 pm":
-        hora_inicio = datetime.strptime("15:00", "%H:%M").time()
-        hora_fin = datetime.strptime("17:59", "%H:%M").time()
+    elif hours_range == "3:00 pm - 6:00 pm":
+        start_hour = datetime.strptime("15:00", "%H:%M").time()
+        end_hour = datetime.strptime("17:59", "%H:%M").time()
 
-    intervalo = timedelta(minutes=15) # Sólo se pueden agendar citas cada 15 minutos desde redes sociales
-    todos_los_horarios = []
-    hora_actual = datetime.combine(datetime.today(), hora_inicio)
+    interval = timedelta(minutes=15) # Sólo se pueden agendar citas cada 15 minutos desde redes sociales
+    allowed_hours = []
+    actual_hour = datetime.combine(datetime.today(), start_hour)
     
-    while hora_actual.time() <= hora_fin:
+    while actual_hour.time() <= end_hour:
         # No se pueden agendar citas después de las {hora}:45
         # Es decir, la última cita se puede agendar a las {hora}:30
         # (1:30, 2:30, 3:30, 4:30...)
-        if hora_actual.minute < 45:
-            todos_los_horarios.append(hora_actual.time())
+        if actual_hour.minute < 45:
+            allowed_hours.append(actual_hour.time())
 
-        hora_actual += intervalo
+        actual_hour += interval
     
     return {
-        "Hora inicial": hora_inicio,
-        "Hora final": hora_fin,
-        "Todos los Horarios": todos_los_horarios
+        "Allowed Hours": allowed_hours,
+        "Start Hour": start_hour,
+        "End Hour": end_hour,
     }
 
-def obtener_nombre_sucursal_por_doctor(id_doctor: int) -> str:
-    for sucursal in constants.SUCURSALES.values():
-        if sucursal["ID DOCTOR"] == id_doctor:
-            return sucursal["NOMBRE SUC."]
-    return "Sucursal desconocida"
+def branch_name_by_doctor_id(doctor_id: int) -> str:
+    for branch in constants.BRANCHES.values():
+        if branch["DOCTOR ID"] == doctor_id:
+            return branch["BRANCH NAME"]
+    return f"branch_name_by_doctor_id: Unknown branch with DOCTOR ID: {doctor_id}"

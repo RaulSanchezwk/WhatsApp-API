@@ -2,46 +2,49 @@ from app.usecases.message_flow.steps.steps_interface import ConversationStep
 from app.usecases.message_flow.steps.steps_factory import ConversationStepsFactory
 from app.usecases.message_flow.message_builder.builder_factory import MessageBuilderFactory
 from app.usecases.message_flow.message_sender.sender_factory import MessageSenderFactory
+from app.usecases.message_flow.message_builder import builders
+from app.usecases.message_flow.message_sender import senders
 from app.core import constants
-import utils
+from app.usecases.message_flow import utils
 
 factory = ConversationStepsFactory()
 
-@factory.register_step("sucursal")
+@factory.register_step("sucursales")
 class SucursalStep(ConversationStep):
     async def handle(self):
 
-        builder = MessageBuilderFactory().get_builder("sucursal")
-        mensaje = builder.build(constants.SUCURSALES)
+        builder = MessageBuilderFactory().get_builder("sucursales")
+        message = builder.build(constants.BRANCHES)
 
-        sender = MessageSenderFactory().get_sender("whatsapp")
-        await sender.send_message(self.client.wa_id, mensaje)
+        sender = MessageSenderFactory().get_sender("whatsapp", message)
+        await sender.send_message(self.contact.wa_id)
 
 @factory.register_step("fechas")
 class FechasStep(ConversationStep):
     async def handle(self):
+
         if not self.client_message.isdigit():
             return await self._send_error("Opción no válida. Por favor, elige una opción válida.")
 
-        seleccion = int(self.client_message)
-        if not (1 <= seleccion <= len(constants.SUCURSALES)):
+        selection = int(self.client_message)
+        if not (1 <= selection <= len(constants.BRANCHES)):
             return await self._send_error("Opción no válida. Por favor, elige una opción válida.")
 
-        doctor = constants.SUCURSALES[seleccion]["ID DOCTOR"]
-        self.client.doctor = doctor
-        self.client.estado_conv = "fechas"
+        doctor = constants.BRANCHES[selection]["DOCTOR ID"]
 
-        fechas = await utils.get_fechas_disponibles(doctor)
+        fechas = await utils.available_dates(doctor)
         if not fechas:
             return await self._send_error("No se encontraron fechas con espacios")
         
         builder = MessageBuilderFactory().get_builder("fechas")
-        mensaje = builder.build(fechas)
+        message = builder.build(fechas)
 
-        sender = MessageSenderFactory().get_sender("whatsapp")
-        await sender.send_message(self.client.wa_id, mensaje)
+        print(message)
 
-@factory.register_step("rango_horarios")
+        sender = MessageSenderFactory().get_sender("whatsapp", message)
+        await sender.send_message(self.contact.wa_id)
+
+@factory.register_step("rango horarios")
 class RangoHorariosStep(ConversationStep):
     async def handle(self):
         pass

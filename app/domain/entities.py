@@ -2,11 +2,27 @@ from datetime import date
 from dataclasses import dataclass
 
 @dataclass
-class Cliente:
-    nombre: str
-    telefono: str
+class Branch:
+    id: int
+    branch_name: str
+    manager: int
+    manager_name: str
 
 @dataclass
-class Cita:
-    fecha: date
-    disponible: bool
+class Contact:
+    id: str
+    wa_id: str
+    phone_number: str
+    name: str
+    step: str
+
+@dataclass
+class Client:
+    name: str
+    phone_number: str
+    contacts: list[Contact]
+
+@dataclass
+class Appointment:
+    date: date
+    available: bool

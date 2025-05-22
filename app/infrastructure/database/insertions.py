@@ -21,7 +21,7 @@ async def save_webhook_notification(data: dict, ip: str, user_agent: str) -> int
         async with connection_context(get_webhook_connection) as conn:
             async with conn.cursor() as cur:
                 await cur.execute("""
-                    INSERT INTO webhook_notification (
+                    INSERT INTO webhook_notifications (
                         messaging_product,
                         object_type,
                         business_account_id,
@@ -52,19 +52,19 @@ async def save_webhook_notification(data: dict, ip: str, user_agent: str) -> int
                 
 
     except (Exception, sql_error) as e:
-        logger.exception("❌ Error al guardar webhook_notification")
+        logger.exception("❌ Error al insertar en webhook_notifications")
         print(f"{e}")
         # se retorna -1 en caso de error para poder manejar el error después en el código
         return -1
 
-async def save_contact(wa_id: str, contact_name: str, state: int) -> int:
+async def save_contact(wa_id: str, contact_name: str, step: str) -> int:
     try:
         async with connection_context(get_webhook_connection) as conn:
             async with conn.cursor() as cur:
                 await cur.execute("""
-                    INSERT INTO contact (wa_id, contact_name, estado)
+                    INSERT INTO contacts (wa_id, contact_name, step)
                     VALUES (%s, %s, %s)
-                """, (wa_id, contact_name, state))
+                """, (wa_id, contact_name, step))
 
                 await conn.commit()
                 last_row_id = cur.lastrowid
@@ -78,17 +78,17 @@ async def save_contact(wa_id: str, contact_name: str, state: int) -> int:
                     return -1
 
     except (Exception, sql_error) as e:
-        logger.exception("❌ Error al guardar contacto")
+        logger.exception("❌ Error al insertar en contacts")
         print(f"{e}")
 
-async def save_intention(wa_id: int) -> int:
+async def save_appt_intention(wa_id: str) -> int:
     try:
         async with connection_context(get_webhook_connection) as conn:
             async with conn.cursor() as cur:
                 await cur.execute("""
-                INSERT INTO intencion_agenda(id_contact)
+                INSERT INTO appointment_intentions(contact)
                 VALUES (
-                    (SELECT id_contact FROM contact WHERE wa_id = %s)
+                    (SELECT id FROM contacts WHERE wa_id = %s)
                 );
                 """, (wa_id,))
 
@@ -104,28 +104,28 @@ async def save_intention(wa_id: int) -> int:
                     return -1
 
     except (Exception, sql_error) as e:
-        logger.exception("❌ Error al guardar intención")
+        logger.exception("❌ Error al insertar en appointment_intentions")
         print(f"{e}")
 
-async def save_intention_history(wa_id: int, webhook: int, field: str, new_value: str):
+async def save_appt_intention_history(wa_id: str, webhook: int, field: str, new_value: str):
     try:
-        old_value = await queries.obtener_de_intencion(field, wa_id)
+        old_value = await queries.get_appt_intention(field, wa_id)
 
         async with connection_context(get_webhook_connection) as conn:
             async with conn.cursor() as cur:
                 await cur.execute("""
-                INSERT INTO intencion_agenda_historial (
-                    id_intencion,
-                    id_webhook,
-                    campo_modificado,
-                    valor_anterior,
-                    valor_nuevo         
+                INSERT INTO appointment_intentions_hist (
+                    appt_intention,
+                    webhook,
+                    modified_field,
+                    previous_value,
+                    new_value         
                 )
                 VALUES (
-                    (SELECT id_intencion
-                    FROM intencion_agenda i
-                    INNER JOIN contact c ON i.id_contact = c.id_contact
-                    WHERE wa_id = %s),
+                    (SELECT id
+                    FROM appointment_intentions a
+                    INNER JOIN contacts c ON a.contact = c.id
+                    WHERE c.wa_id = %s),
                     %s, %s, %s, %s);
                 """, (wa_id, webhook, field, old_value, new_value))
 
@@ -141,5 +141,5 @@ async def save_intention_history(wa_id: int, webhook: int, field: str, new_value
                     return -1
 
     except (Exception, sql_error) as e:
-        logger.exception("❌ Error al guardar historial de la intención")
+        logger.exception("❌ Error al insertar en appointment_intention_hist")
         print(f"{e}")

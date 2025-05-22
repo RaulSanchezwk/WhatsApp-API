@@ -1,16 +1,18 @@
 from app.usecases.message_flow.message_builder.builder_interface import MessageBuilder
 
 class MessageBuilderFactory:
-    def __init__(self):
-        self._builders = {}
+    _builders = {}
 
-    def register_builder(self, tipo: str):
+    @classmethod
+    def register_builder(cls, tipo):
         def decorator(builder_cls):
-            self._builders[tipo] = builder_cls()
+            cls._builders[tipo] = builder_cls
             return builder_cls
         return decorator
 
-    def get_builder(self, tipo: str) -> MessageBuilder:
-        if tipo not in self._builders:
+    @classmethod
+    def get_builder(cls, tipo):
+        builder_cls = cls._builders.get(tipo)
+        if not builder_cls:
             raise ValueError(f"No hay builder registrado para el tipo: {tipo}")
-        return self._builders[tipo]
+        return builder_cls()

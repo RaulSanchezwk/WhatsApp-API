@@ -4,27 +4,27 @@ from pydantic import BaseModel
 from typing import Optional
 
 class FlattenedData(BaseModel):
-    business_account_id: Optional[str]
-    messaging_product: Optional[str]
-    display_phone_number: Optional[str]
-    phone_number_id: Optional[str]
-    field: Optional[str]
-    profile_name: Optional[str]
-    wa_id: Optional[str]
-    message_id: Optional[str]
-    whatsapp_received_at: Optional[str]
-    we_received_at: datetime
-    message_type: Optional[str]
-    message_body: Optional[str]
-    status: Optional[str]
-    status_timestamp: Optional[str]
-    recipient_id: Optional[str]
-    conversation_id: Optional[str]
-    conversation_type: Optional[str]
-    billable: Optional[bool]
-    pricing_model: Optional[str]
-    category: Optional[str]
-    expiration_timestamp: Optional[str]
+    business_account_id: Optional[str] = None
+    messaging_product: Optional[str] = None
+    display_phone_number: Optional[str] = None
+    phone_number_id: Optional[str] = None
+    field: Optional[str] = None
+    profile_name: Optional[str] = None
+    wa_id: Optional[str] = None
+    message_id: Optional[str] = None
+    whatsapp_received_at: Optional[str] = None
+    we_received_at: datetime = None
+    message_type: Optional[str] = None
+    message_body: Optional[str] = None
+    status: Optional[str] = None
+    status_timestamp: Optional[str] = None
+    recipient_id: Optional[str] = None
+    conversation_id: Optional[str] = None
+    conversation_type: Optional[str] = None
+    billable: Optional[bool] = None
+    pricing_model: Optional[str] = None
+    category: Optional[str] = None
+    expiration_timestamp: Optional[str] = None
 
 class WebhookProcessor:
     def __init__(self, raw_data: dict):

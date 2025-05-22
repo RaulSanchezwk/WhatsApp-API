@@ -6,10 +6,10 @@ factory = MessageBuilderFactory()
 
 @factory.register_builder("sucursales")
 class SucursalesMessageBuilder(MessageBuilder):
-    def build(self, sucursales: dict):
+    def build(self, branches: dict):
         message = "Elige una sucursal:\n"
-        for id, sucursal in sucursales.items():
-            message += f"{id} - {sucursal['NOMBRE SUC.']}\n"
+        for id, sucursal in branches.items():
+            message += f"{id} - {sucursal['BRANCH NAME']}\n"
         return message
     
 @factory.register_builder("fechas")

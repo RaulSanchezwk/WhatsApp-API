@@ -1,18 +1,19 @@
 from .connection import get_citas_connection, get_webhook_connection, connection_context
 from datetime import datetime, time
 from app.core import constants
+from app.domain.entities import Contact
 import logging
 
 logger = logging.getLogger(__name__)
 
-async def contact_exists(wa_id: str) -> int:
+async def get_contact_by_wa_id(wa_id: str) -> Contact | None:
 
     try:
         async with connection_context(get_webhook_connection) as conn:
             async with conn.cursor() as cur:
                 await cur.execute("""
-                    SELECT id_contact 
-                    FROM contact 
+                    SELECT id, wa_id, display_phone_number, contact_name, step
+                    FROM contacts
                     WHERE wa_id = %s;
                 """, (wa_id,))
 
@@ -20,21 +21,32 @@ async def contact_exists(wa_id: str) -> int:
 
                 await cur.close()
 
-                return result[0] if result else None
+                if result:
+                    contact = Contact(
+                        id=result[0],
+                        wa_id=result[1],
+                        phone_number=result[2],
+                        name=result[3],
+                        step=result[4]
+                    )
+                    return contact
+                else:
+                    return None
+                
     except Exception as e:
         logger.exception("❌ Error consultando si ya existe el contacto")
         print(e)
         return None
 
-async def get_step(id_contact: int) -> str:
+async def get_step(wa_id: str) -> str:
     try:
         async with connection_context(get_webhook_connection) as conn:
             async with conn.cursor() as cur:
                 await cur.execute("""
-                    SELECT estado
+                    SELECT step
                     FROM contact
-                    WHERE id_contact = %s;
-                """, (id_contact,))
+                    WHERE wa_id = %s;
+                """, (wa_id,))
 
                 result = await cur.fetchone()
 
@@ -47,7 +59,7 @@ async def get_step(id_contact: int) -> str:
         print(e)
         return -1
 
-async def fechas_con_disponibilidad(fecha_inicio, fecha_fin, doctor: int) -> list:
+async def get_available_dates(start_date, end_date, doctor: int) -> list:
     try:
         async with connection_context(get_citas_connection) as conn:
             async with conn.cursor() as cur:
@@ -70,7 +82,7 @@ async def fechas_con_disponibilidad(fecha_inicio, fecha_fin, doctor: int) -> lis
                                      GROUP BY fecha
                                      HAVING total_citas < 28
                                      ORDER BY fecha;""",
-                                     (fecha_inicio, fecha_fin, doctor))
+                                     (start_date, end_date, doctor))
                 result = await cur.fetchall()
 
                 await cur.close()
@@ -89,7 +101,7 @@ async def fechas_con_disponibilidad(fecha_inicio, fecha_fin, doctor: int) -> lis
         print(e)
         return []
     
-async def rangos_con_disponibilidad(fecha: str, doctor: int) -> list:
+async def get_available_ranges(doctor: int, date: str) -> list:
 
     try:
         async with connection_context(get_citas_connection) as conn:
@@ -125,7 +137,7 @@ async def rangos_con_disponibilidad(fecha: str, doctor: int) -> list:
                         GROUP BY r.rango
                         HAVING COUNT(DISTINCT c.hora) < 9
                         ORDER BY r.inicio;
-                """, (fecha, doctor))
+                """, (date, doctor))
 
                 result = await cur.fetchall()
 
@@ -144,7 +156,7 @@ async def rangos_con_disponibilidad(fecha: str, doctor: int) -> list:
         print(e)
         return []
 
-async def horarios_ocupados(doctor: int, fecha: datetime, hora_inicio: time, hora_fin: time) -> list:
+async def get_occupied_hours(doctor: int, date: datetime, start_hour: time, end_hour: time) -> list:
 
     try:
         async with connection_context(get_citas_connection) as conn:
@@ -167,7 +179,7 @@ async def horarios_ocupados(doctor: int, fecha: datetime, hora_inicio: time, hor
                         '17:45:00'
                     )
                     ORDER BY hora;
-                """, (doctor, fecha, hora_inicio, hora_fin))
+                """, (doctor, date, start_hour, end_hour))
 
                 result = await cur.fetchall()
 
@@ -180,17 +192,17 @@ async def horarios_ocupados(doctor: int, fecha: datetime, hora_inicio: time, hor
         print(e)
         return []
     
-async def obtener_de_intencion(campo: str, wa_id: str):
+async def get_appt_intention(field: str, wa_id: str):
     try:
-        if campo not in constants.CAMPOS_PERMITIDOS:
+        if field not in constants.ALOUD_FIELDS:
             raise ValueError("Campo no permitido")
 
         async with connection_context(get_webhook_connection) as conn:
             async with conn.cursor() as cur:
                 await cur.execute(f"""
-                    SELECT i.{campo}
-                    FROM intencion_agenda i
-                    INNER JOIN contact c ON i.id_contact = c.id_contact
+                    SELECT i.{field}
+                    FROM appointment_intentions i
+                    INNER JOIN contacts c ON i.contact = c.id
                     WHERE c.wa_id = %s;
                 """, (wa_id, ))
                 
@@ -201,6 +213,6 @@ async def obtener_de_intencion(campo: str, wa_id: str):
                 return result[0] if result else None
 
     except Exception as e:
-        logger.exception(f"❌ Error consultando de intencion_agenda ({campo})")
+        logger.exception(f"❌ Error consultando de appointment_intentions ({field})")
         print(e)
         return -1

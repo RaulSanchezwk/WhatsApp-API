@@ -10,13 +10,13 @@ from app.core.config import settings
 from app.usecases.message_flow.message_router import MessageRouter
 from app.core.logging_config import setup_logger
 from app.usecases.webhook_processor import WebhookProcessor, FlattenedData
-import tracemalloc
+#import tracemalloc
 
 # Se inicializa el rastreo de memoria para ayudar a identificar problemas de memoria.
 # Esto es útil para el desarrollo y la depuración, pero puede ser costoso en términos de rendimiento.
 # Por lo tanto, se debe usar solo en entornos de desarrollo.
-if settings.DEBUG:
-    tracemalloc.start() 
+# if settings.DEBUG:
+#     tracemalloc.start() 
 
 # lifespan es un contexto asincrónico que se utiliza para inicializar recursos al inicio de la aplicación y liberarlos al finalizar.
 # En este caso, se utiliza para configurar el logger y las conexiones a la base de datos.
@@ -78,7 +78,7 @@ async def receive_webhook(request: Request):
 
             # Se extraen el ID de WhatsApp y el ID del número de teléfono del mensaje.
             # Estos IDs son necesarios para enviar mensajes de respuesta a través de la API de WhatsApp.
-            await MessageRouter(data, last_row_id)
+            await MessageRouter.create(data, last_row_id)
 
     elif status:
         await manejar_status(value)
