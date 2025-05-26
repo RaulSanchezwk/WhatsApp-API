@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
 
 class MessageSender(ABC):
-    def __init__(self, message):
+    def __init__(self, id, message):
+        self.id = id
         self.message = message
 
     @abstractmethod
-    async def send_message(self, id: str):
+    async def send_message(self):
         pass

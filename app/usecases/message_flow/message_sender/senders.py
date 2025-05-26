@@ -6,16 +6,18 @@ factory = MessageSenderFactory()
 
 @factory.register_sender("whatsapp")
 class WhatsAppMessageSender(MessageSender):
-    async def send_message(self, id: str):
+    async def send_message(self) -> dict | None:
         try:
-            await send_whatsapp_text_message(id, self.message)
+            print(self.message)
+            return await send_whatsapp_text_message(self.id, self.message)
 
         except Exception as e:
             print(f"Error al enviar mensaje desde WhatsApp: {e}")
+            return None
 
 @factory.register_sender("facebook")
 class FacebookMessageSender(MessageSender):
-    async def send_message(self, id: str):
+    async def send_message(self):
         try:
             ###### Enviar mensaje desde Facebook Pages
             pass

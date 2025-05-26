@@ -5,8 +5,10 @@ from dataclasses import dataclass
 class Branch:
     id: int
     branch_name: str
-    manager: int
-    manager_name: str
+    address: str
+    city: str
+    location_url: str
+    is_active: bool
 
 @dataclass
 class Contact:
@@ -18,11 +20,13 @@ class Contact:
 
 @dataclass
 class Client:
+    id: int
     name: str
     phone_number: str
     contacts: list[Contact]
 
 @dataclass
 class Appointment:
+    id: int
     date: date
     available: bool

@@ -3,7 +3,7 @@ from app.core import constants
 from app.infrastructure.database import queries
 from app.domain.entities import Branch
 
-async def available_dates(doctor: int) -> list:
+async def available_dates(branch: Branch) -> list:
     
     fecha_inicial = datetime.combine(datetime.today(), datetime.min.time()) + timedelta(days=1) # Se establece la fecha inicial 
                                                                                                 # como mañana a las 00:00
@@ -12,7 +12,7 @@ async def available_dates(doctor: int) -> list:
                                                                            # fecha inicial + el número de días a generar
     
     try:
-        fechas_con_espacios = await queries.get_available_dates(fecha_inicial, fecha_final, doctor)
+        fechas_con_espacios = await queries.get_available_dates(fecha_inicial, fecha_final, branch)
         
     except Exception as e:
         print(f"Error at available_dates: {e}")
@@ -92,3 +92,9 @@ def branch_name_by_doctor_id(doctor_id: int) -> str:
         if branch["DOCTOR ID"] == doctor_id:
             return branch["BRANCH NAME"]
     return f"branch_name_by_doctor_id: Unknown branch with DOCTOR ID: {doctor_id}"
+
+def doctor_id_by_branch_name(branch: str) -> str:
+    for b in constants.BRANCHES.values():
+        if b["BRANCH NAME"] == branch.upper():
+            return b["DOCTOR ID"]
+    return f"doctor_id_by_branch_name: Unknown doctor for branch: {branch}"

@@ -11,8 +11,8 @@ class MessageSenderFactory:
         return decorator
     
     @classmethod
-    def get_sender(cls, name: str, message: str) -> MessageSender:
+    def get_sender(cls, name: str) -> MessageSender:
         sender_cls = cls._senders.get(name)
         if not sender_cls:
             raise ValueError(f"No hay un sender registrado como: {name}")
-        return sender_cls(message)
+        return sender_cls

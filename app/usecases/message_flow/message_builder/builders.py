@@ -1,15 +1,16 @@
 from app.usecases.message_flow.message_builder.builder_factory import MessageBuilderFactory
 from app.usecases.message_flow.message_builder.builder_interface import MessageBuilder
 from babel.dates import format_datetime
+from app.domain.entities import Branch
 
 factory = MessageBuilderFactory()
 
 @factory.register_builder("sucursales")
 class SucursalesMessageBuilder(MessageBuilder):
-    def build(self, branches: dict):
+    def build(self, branches: list[Branch]):
         message = "Elige una sucursal:\n"
-        for id, sucursal in branches.items():
-            message += f"{id} - {sucursal['BRANCH NAME']}\n"
+        for branch in branches:
+            message += f"{branch.id} - {branch.branch_name}\n"
         return message
     
 @factory.register_builder("fechas")
@@ -20,7 +21,7 @@ class FechasMessageBuilder(MessageBuilder):
             message += f"{i+1} - {format_datetime(fecha['fecha'], 'EEEE, d \'de\' MMMM \'de\' y', locale='es_ES')}\nEspacios: {28 - fecha['total_citas']}\n\n"
         return message
 
-@factory.register_builder("rango_horarios")
+@factory.register_builder("rango horarios")
 class RangosMessageBuilder(MessageBuilder):
     def build(self, rango_horarios: list):
         message = f"Elige un rango de horarios:\n\n"

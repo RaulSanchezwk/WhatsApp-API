@@ -1,10 +1,10 @@
-from datetime import datetime
 import json
 from .connection import get_webhook_connection, connection_context
 import json
 import logging
 from aiomysql import Error as sql_error
 from app.infrastructure.database import queries
+from app.domain.entities import Contact
 
 logger = logging.getLogger(__name__)
 
@@ -81,16 +81,14 @@ async def save_contact(wa_id: str, contact_name: str, step: str) -> int:
         logger.exception("❌ Error al insertar en contacts")
         print(f"{e}")
 
-async def save_appt_intention(wa_id: str) -> int:
+async def save_appt_intention(contact: Contact) -> int:
     try:
         async with connection_context(get_webhook_connection) as conn:
             async with conn.cursor() as cur:
                 await cur.execute("""
                 INSERT INTO appointment_intentions(contact)
-                VALUES (
-                    (SELECT id FROM contacts WHERE wa_id = %s)
-                );
-                """, (wa_id,))
+                VALUES (%s);
+                """, (contact.id,))
 
                 await conn.commit()
                 last_row_id = cur.lastrowid
