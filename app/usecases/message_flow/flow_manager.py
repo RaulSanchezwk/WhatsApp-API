@@ -13,6 +13,12 @@ class FlowManager:
                 next_step = "rango horarios"
 
             case "rango horarios":
-                next_step = "hora"
+                next_step = "horarios"
+
+            case "horarios":
+                next_step = "confirmación"
+            
+            case "confirmación":
+                next_step = "fin"
             
         return next_step

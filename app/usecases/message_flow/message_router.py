@@ -64,6 +64,9 @@ class MessageRouter:
         await updates.update_phone_number(self.contact)
 
     async def handle_existing_contact(self):
+
+        await updates.update_webhook_contact(self.contact, self.webhook_DB_id)
+
         current_step = self.contact.step
 
         self.contact.step = FlowManager.get_next_step(self, current_step)

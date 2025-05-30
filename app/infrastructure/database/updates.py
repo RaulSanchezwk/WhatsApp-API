@@ -107,7 +107,7 @@ async def update_chosen_hours_range(hours_range: str, contact: Contact) -> None:
         logger.exception("❌ Error actualizando chosen_hours_range")
         print(e)
 
-async def update_chosen_hour(horario: time, contact: Contact) -> None:
+async def update_chosen_hour(hour: time, contact: Contact) -> None:
     try:
         async with connection_context(get_webhook_connection) as conn:
             async with conn.cursor() as cur:
@@ -115,7 +115,7 @@ async def update_chosen_hour(horario: time, contact: Contact) -> None:
                     UPDATE appointment_intentions
                     SET chosen_hour = %s
                     WHERE contact = %s;
-                """, (horario, contact.id))
+                """, (hour, contact.id))
 
                 await conn.commit()
                 await cur.close()

@@ -31,8 +31,22 @@ class RangosMessageBuilder(MessageBuilder):
 
 @factory.register_builder("horarios")
 class HorariosMessageBuilder(MessageBuilder):
-    def build(self, horarios_disponibles: list):
+    def build(self, available_hours: list):
         message = f"Elige un horario:\n\n"
-        for i, horario in enumerate(horarios_disponibles):
-            message += f"{i+1} - {horario}\nEspacios: {9 - horario["citas"]}"
+        for i, hour in enumerate(available_hours):
+            message += f"{i+1} - {hour.strftime('%H:%M')}\n"
+        return message
+
+@factory.register_builder("confirmación")
+class ConfirmacionMessageBuilder(MessageBuilder):
+    def build(self, data: dict):
+        message = f"""
+                    !Tu cita quedó agendada! 😁
+
+                    📅 Para el día: {format_datetime(data["Date"], 'EEEE, d \'de\' MMMM \'de\' y', locale='es_ES')}
+
+                    📍 En la sucursal: {data["Branch"].branch_name}
+
+                    🕐 A las: {data["Chosen Hour"].strftime('%I:%M %p').lstrip('0').lower()}"""
+    
         return message

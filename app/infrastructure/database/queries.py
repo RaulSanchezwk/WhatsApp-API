@@ -139,9 +139,10 @@ async def get_available_dates(start_date: str, end_date: str, branch: Branch) ->
         print(e)
         return None
     
-async def get_available_ranges(doctor: int, date: str) -> list[str] | None:
-
+async def get_available_ranges(branch: Branch, date: str) -> list[str] | None:
     try:
+        doctor = await get_branch_manager(branch)
+
         async with connection_context(get_citas_connection) as conn:
             async with conn.cursor() as cur:
                 await cur.execute("""
@@ -197,9 +198,10 @@ async def get_available_ranges(doctor: int, date: str) -> list[str] | None:
         print(e)
         return None
 
-async def get_occupied_hours(doctor: int, date: datetime, start_hour: time, end_hour: time) -> list[str] | None:
-
+async def get_occupied_hours(branch: Branch, date: datetime, start_hour: time, end_hour: time) -> list[time] | None:
     try:
+        doctor = await get_branch_manager(branch)
+
         async with connection_context(get_citas_connection) as conn:
             async with conn.cursor() as cur:
                 await cur.execute("""

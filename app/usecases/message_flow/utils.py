@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from app.core import constants
 from app.infrastructure.database import queries
 from app.domain.entities import Branch
@@ -21,9 +21,9 @@ async def available_dates(branch: Branch) -> list:
     finally:
         return fechas_con_espacios
 
-async def available_hours_ranges(fecha: str, doctor: int) -> list:
+async def available_hours_ranges(date: str, branch: Branch) -> list:
     try:
-        rangos_con_espacios = await queries.get_available_ranges(fecha, doctor)
+        rangos_con_espacios = await queries.get_available_ranges(branch, date)
 
     except Exception as e:
         print(f"Error at available_hours_ranges: {e}")        
@@ -32,27 +32,28 @@ async def available_hours_ranges(fecha: str, doctor: int) -> list:
     finally:
         return rangos_con_espacios
 
-async def available_hours(rango_horarios: str, doctor: int, fecha: datetime) -> list:
+async def available_hours(hours_range: str, branch: Branch, date: datetime) -> list[time]:
     try: 
-        parametros_horarios = build_available_hour_context(rango_horarios)
+        avilable_hour_context = build_available_hour_context(hours_range)
 
-        hora_inicio = parametros_horarios["Hora inicial"]
-        hora_fin = parametros_horarios["Hora final"]
-        todos_los_horarios = parametros_horarios["Todos los Horarios"]
+        start_hour = avilable_hour_context["Start Hour"]
+        end_hour = avilable_hour_context["End Hour"]
+        allowed_hours = avilable_hour_context["Allowed Hours"]
 
-        horas_ocupadas = await queries.horarios_ocupados(doctor, fecha, hora_inicio, hora_fin)
-        horas_ocupadas = [((datetime.min + hora).time() if isinstance(hora, timedelta) else hora) for hora in horas_ocupadas]
+        occupied_hours = await queries.get_occupied_hours(branch, date, start_hour, end_hour)
 
-        horarios_disponibles = list(set(todos_los_horarios) - set(horas_ocupadas))
+        occupied_hours = [((datetime.min + hour).time() if isinstance(hour, timedelta) else hour) for hour in occupied_hours]
 
-        horarios_disponibles = sorted(horarios_disponibles)
+        available_hours = list(set(allowed_hours) - set(occupied_hours))
+
+        available_hours = sorted(available_hours)
 
     except Exception as e:
         print(f"Error at available_hours: {e}")        
-        horarios_disponibles = []
+        available_hours = []
 
     finally:
-        return horarios_disponibles
+        return available_hours
 
 def build_available_hour_context(hours_range: str) -> dict:
 
