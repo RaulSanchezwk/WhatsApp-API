@@ -6,11 +6,11 @@ This project is intended to create and manage a chatbot that allows clients to s
 ## Getting Started
 
 ### Clone the repo
-git clone https://github.com/RegioDental/automated-scheduling-chatbot.git
+git clone https://github.com/RegioDental/automated-scheduling-chatbot.git  
 cd automated-scheduling-chatbot
 
 ### Create and activate a virtual environment (Python)
-python -m venv venv
+python -m venv venv  
 source venv/bin/activate  # or .\venv\Scripts\activate on Windows
 
 ### Install dependencies
@@ -23,7 +23,7 @@ uvicorn app.interfaces.main:app --port 8000 --reload
 ## Testing Webhook Locally
 
 ### Emulate a Customer Message Locally Using PowerShell
-$uri = "http://localhost:8000/webhook"
+$uri = "http://localhost:8000/webhook"  
 $headers = @{ "Content-Type" = "application/json" }
 
 $json = @'
